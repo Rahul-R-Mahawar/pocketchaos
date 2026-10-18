@@ -7,8 +7,8 @@ import { User } from '../models/User';
 import { AppError } from '../utils/AppError';
 import { sendSuccess } from '../utils/apiResponse';
 import { serializeEndpoint } from '../utils/serializers';
-import { idParamsSchema } from '../validators/common.schema';
-import { createEndpointSchema, updateChaosSchema } from '../validators/endpoint.schema';
+import type { IdParams } from '../validators/common.schema';
+import type { CreateEndpointInput, UpdateChaosInput } from '../validators/endpoint.schema';
 
 export const MAX_ENDPOINTS_PER_USER = 100;
 
@@ -21,9 +21,10 @@ export const listEndpoints: RequestHandler = async (req, res) => {
   sendSuccess(res, endpoints.map(serializeEndpoint));
 };
 
-export const createEndpoint: RequestHandler = async (req, res) => {
+// Params and bodies are validated by the route's `validate` middleware before these handlers run.
+export const createEndpoint: RequestHandler<Record<string, never>, unknown, CreateEndpointInput> = async (req, res) => {
   const userId = getAuthUserId(req);
-  const input = await createEndpointSchema.parseAsync(req.body);
+  const input = req.body;
 
   const owner = await User.findById(userId).select('projectKey').lean();
   if (!owner) throw new AppError(401, 'UNAUTHORIZED', 'Account no longer exists');
@@ -53,10 +54,10 @@ export const createEndpoint: RequestHandler = async (req, res) => {
   }
 };
 
-export const updateEndpointChaos: RequestHandler = async (req, res) => {
+export const updateEndpointChaos: RequestHandler<IdParams, unknown, UpdateChaosInput> = async (req, res) => {
   const userId = getAuthUserId(req);
-  const { id } = idParamsSchema.parse(req.params);
-  const patch = await updateChaosSchema.parseAsync(req.body);
+  const { id } = req.params;
+  const patch = req.body;
 
   const $set = Object.fromEntries(Object.entries(patch).map(([field, value]) => [`chaosConfig.${field}`, value]));
 
@@ -71,9 +72,9 @@ export const updateEndpointChaos: RequestHandler = async (req, res) => {
   sendSuccess(res, serializeEndpoint(endpoint));
 };
 
-export const deleteEndpoint: RequestHandler = async (req, res) => {
+export const deleteEndpoint: RequestHandler<IdParams> = async (req, res) => {
   const userId = getAuthUserId(req);
-  const { id } = idParamsSchema.parse(req.params);
+  const { id } = req.params;
 
   const endpoint = await ChaosEndpoint.findOneAndDelete({ _id: id, userId }).lean();
   if (!endpoint) throw new AppError(404, 'ENDPOINT_NOT_FOUND', 'Endpoint not found');

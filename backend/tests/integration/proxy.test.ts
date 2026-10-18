@@ -29,6 +29,9 @@ beforeEach(async () => {
 const proxyUrl = (path: string, key = alice.projectKey) => `/proxy/${key}${path}`;
 const appliedChaos = (res: request.Response) => res.headers['x-pocketchaos-applied'];
 
+/** .ai/CONTEXT.md §5: the exact body of an injected fault. */
+const CHAOS_FAULT = { chaosFault: true, message: 'Injected by PocketChaos' };
+
 /** Reads the body as text, so deliberately broken JSON is not parsed (and rejected) client-side. */
 const rawText = ((res: NodeJS.ReadableStream, callback: (err: Error | null, body: string) => void) => {
   let text = '';
@@ -175,11 +178,11 @@ describe('delayMs boundaries', () => {
 });
 
 describe('failureRate boundaries', () => {
-  it('failureRate = 100 fails every request with an injected 500 in the standard envelope', async () => {
+  it('failureRate = 100 fails every request with the default 500 and the chaosFault body', async () => {
     await createEndpoint(alice.token, { chaosConfig: { enabled: true, failureRate: 100 } });
     for (let i = 0; i < 20; i += 1) {
       const res = await request(app).get(proxyUrl('/users/profile')).expect(500);
-      expectErrorEnvelope(res.body, 'CHAOS_INJECTED_FAILURE');
+      expect(res.body).toEqual(CHAOS_FAULT);
       expect(appliedChaos(res)).toBe('failure:500');
     }
     expect(await RequestLog.countDocuments({ statusReturned: 500, chaosApplied: 'failure:500' })).toBe(20);
@@ -222,30 +225,41 @@ describe('failureRate boundaries', () => {
   });
 });
 
-describe('overrideStatusCode', () => {
-  it.each([200, 401, 429, 503, 599])('rewrites the mock status to %i and keeps the body', async (status) => {
-    await createEndpoint(alice.token, { chaosConfig: { enabled: true, overrideStatusCode: status } });
+describe('overrideStatusCode (status of injected faults)', () => {
+  it.each([400, 401, 429, 503, 599])('returns %i with the chaosFault body when a fault is injected', async (status) => {
+    await createEndpoint(alice.token, { chaosConfig: { enabled: true, failureRate: 100, overrideStatusCode: status } });
     const res = await request(app).get(proxyUrl('/users/profile')).expect(status);
-    expect(res.body).toEqual(sampleMock);
-    expect(appliedChaos(res)).toBe(`status:${status}`);
+    expect(res.body).toEqual(CHAOS_FAULT);
+    expect(appliedChaos(res)).toBe(`failure:${status}`);
   });
 
-  it('rewrites the upstream status in forward mode', async () => {
-    mockUpstream({ status: 200, body: Buffer.from('{"ok":true}') });
-    await createEndpoint(alice.token, {
+  it('does not change successful responses (no fault rolled)', async () => {
+    await createEndpoint(alice.token, { chaosConfig: { enabled: true, failureRate: 0, overrideStatusCode: 503 } });
+    const res = await request(app).get(proxyUrl('/users/profile')).expect(200);
+    expect(res.body).toEqual(sampleMock);
+    expect(appliedChaos(res)).toBe('none');
+  });
+
+  it('keeps the real upstream status on success, and never calls the upstream on a fault', async () => {
+    const forward = mockUpstream({ status: 201, body: Buffer.from('{"ok":true}') });
+    const endpoint = await createEndpoint(alice.token, {
       path: '/upstream',
       targetUrl: 'https://8.8.8.8/api',
-      chaosConfig: { enabled: true, overrideStatusCode: 429 },
+      chaosConfig: { enabled: true, failureRate: 0, overrideStatusCode: 429 },
     });
+    await request(app).get(proxyUrl('/upstream')).expect(201, { ok: true });
+
+    await setChaos(alice.token, endpoint.id, { failureRate: 100 });
     const res = await request(app).get(proxyUrl('/upstream')).expect(429);
-    expect(res.body).toEqual({ ok: true });
+    expect(res.body).toEqual(CHAOS_FAULT);
+    expect(forward).toHaveBeenCalledTimes(1);
   });
 
-  it('is not applied on top of PocketChaos errors such as an SSRF block', async () => {
+  it('applies no chaos on top of PocketChaos errors such as an SSRF block', async () => {
     await insertRawEndpoint({
       path: '/evil',
       targetUrl: 'http://127.0.0.1:27017/',
-      chaosConfig: { enabled: true, overrideStatusCode: 200, corruptJson: true },
+      chaosConfig: { enabled: true, corruptJson: true },
     });
     const res = await request(app).get(proxyUrl('/evil')).expect(403);
     expectErrorEnvelope(res.body, 'SSRF_BLOCKED');
@@ -420,9 +434,10 @@ describe('unknown routes and malformed requests', () => {
     expect(await RequestLog.countDocuments()).toBe(0);
   });
 
-  it.each(['abc', 'ABCDEFG', 'AB-CDE', 'ABC_DE'])('returns 400 INVALID_PROJECT_KEY for %p', async (key) => {
+  it.each(['abc', 'ABCDEFG', 'AB-CDE', 'ABC_DE'])('returns 400 VALIDATION_ERROR for malformed key %p', async (key) => {
     const res = await request(app).get(`/proxy/${key}/users/profile`).expect(400);
-    expectErrorEnvelope(res.body, 'INVALID_PROJECT_KEY');
+    expectErrorEnvelope(res.body, 'VALIDATION_ERROR');
+    expect(res.body.error.details[0]).toMatchObject({ location: 'params', path: 'projectKey' });
   });
 
   it('returns 400 (not 500) for malformed percent-encoding in the path', async () => {
@@ -529,7 +544,7 @@ describe('chaos changes take effect immediately', () => {
   it('reflects a PATCH on the very next proxied request', async () => {
     const endpoint = await createEndpoint(alice.token);
     await request(app).get(proxyUrl('/users/profile')).expect(200);
-    await setChaos(alice.token, endpoint.id, { enabled: true, overrideStatusCode: 503 });
+    await setChaos(alice.token, endpoint.id, { enabled: true, failureRate: 100, overrideStatusCode: 503 });
     await request(app).get(proxyUrl('/users/profile')).expect(503);
     await setChaos(alice.token, endpoint.id, { enabled: false });
     await request(app).get(proxyUrl('/users/profile')).expect(200);

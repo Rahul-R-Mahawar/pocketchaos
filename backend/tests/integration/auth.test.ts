@@ -2,7 +2,14 @@ import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { createApp } from '../../src/app';
 import { User } from '../../src/models/User';
-import { app, expectErrorEnvelope, registerUser, TEST_PASSWORD, uniqueEmail } from '../helpers/api';
+import {
+  app,
+  expectErrorEnvelope,
+  expectSuccessEnvelope,
+  registerUser,
+  TEST_PASSWORD,
+  uniqueEmail,
+} from '../helpers/api';
 import { useTestDatabase } from '../helpers/db';
 
 useTestDatabase();
@@ -14,7 +21,7 @@ describe('POST /api/auth/register', () => {
       .send({ email: 'ada@example.com', password: TEST_PASSWORD })
       .expect(201);
 
-    expect(res.body).toMatchObject({ success: true, error: null });
+    expectSuccessEnvelope(res.body);
     const { token, projectKey, user } = res.body.data;
     expect(projectKey).toMatch(/^[A-Z0-9]{6}$/);
     expect(user).toEqual({

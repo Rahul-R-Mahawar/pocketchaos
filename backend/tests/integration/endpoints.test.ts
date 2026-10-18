@@ -11,6 +11,7 @@ import {
   bearer,
   createEndpoint,
   expectErrorEnvelope,
+  expectSuccessEnvelope,
   registerUser,
   sampleMock,
   type RegisteredUser,
@@ -83,7 +84,7 @@ describe('POST /api/endpoints', () => {
       .send({ name: '  Profile  ', path: '/users//profile/', method: 'get', mockResponseJson: sampleMock })
       .expect(201);
 
-    expect(res.body).toMatchObject({ success: true, error: null });
+    expectSuccessEnvelope(res.body);
     expect(res.body.data).toEqual({
       id: expect.stringMatching(/^[a-f0-9]{24}$/),
       projectKey: alice.projectKey,
@@ -131,7 +132,7 @@ describe('POST /api/endpoints', () => {
     ['failureRate = 0', { failureRate: 0 }],
     ['failureRate = 100', { failureRate: 100 }],
     ['fractional failureRate', { failureRate: 12.5 }],
-    ['overrideStatusCode = 200 (min)', { overrideStatusCode: 200 }],
+    ['overrideStatusCode = 400 (min)', { overrideStatusCode: 400 }],
     ['overrideStatusCode = 599 (max)', { overrideStatusCode: 599 }],
     ['overrideStatusCode = null', { overrideStatusCode: null }],
   ])('accepts boundary value %s', async (_label, chaosConfig) => {
@@ -189,7 +190,8 @@ describe('POST /api/endpoints', () => {
     ['failureRate above 100', { chaosConfig: { failureRate: 100.01 } }],
     ['negative failureRate', { chaosConfig: { failureRate: -1 } }],
     ['failureRate as a string', { chaosConfig: { failureRate: '50' } }],
-    ['overrideStatusCode below 200', { chaosConfig: { overrideStatusCode: 199 } }],
+    ['overrideStatusCode below 400 (must be an error status)', { chaosConfig: { overrideStatusCode: 399 } }],
+    ['overrideStatusCode = 200', { chaosConfig: { overrideStatusCode: 200 } }],
     ['overrideStatusCode above 599', { chaosConfig: { overrideStatusCode: 600 } }],
     ['overrideStatusCode as a string', { chaosConfig: { overrideStatusCode: '503' } }],
     ['enabled as a string', { chaosConfig: { enabled: 'true' } }],
@@ -245,7 +247,7 @@ describe('SSRF protection on targetUrl', () => {
       .expect(400);
     expectErrorEnvelope(res.body, 'VALIDATION_ERROR');
     expect(res.body.error.details).toEqual([
-      { path: 'targetUrl', message: expect.stringMatching(reason) },
+      { location: 'body', path: 'targetUrl', message: expect.stringMatching(reason) },
     ]);
   }
 
@@ -286,6 +288,43 @@ describe('SSRF protection on targetUrl', () => {
     jest.spyOn(dns.promises, 'lookup').mockResolvedValue([{ address: '93.184.215.14', family: 4 }] as never);
     const endpoint = await createEndpoint(alice.token, { path: '/public', targetUrl: 'https://api.example.com/v1' });
     expect(endpoint.mode).toBe('forward');
+  });
+});
+
+describe('Zod validation middleware (CONTEXT.md §3.2)', () => {
+  let alice: RegisteredUser;
+  beforeEach(async () => {
+    alice = await registerUser();
+  });
+
+  it('rejects unexpected query parameters on mutation routes', async () => {
+    const res = await request(app)
+      .post('/api/endpoints?admin=true')
+      .set(bearer(alice.token))
+      .send({ name: 'Q', path: '/q', method: 'GET' })
+      .expect(400);
+    expectErrorEnvelope(res.body, 'VALIDATION_ERROR');
+    expect(res.body.error.details).toEqual([{ location: 'query', path: '', message: expect.any(String) }]);
+    expect(await ChaosEndpoint.countDocuments()).toBe(0);
+  });
+
+  it('ignores query strings such as cache-busters on read routes', async () => {
+    await request(app).get('/api/endpoints?_=1700000000').set(bearer(alice.token)).expect(200);
+  });
+
+  it('reports params and body problems together, tagged by location', async () => {
+    const res = await request(app)
+      .patch('/api/endpoints/not-an-id/chaos')
+      .set(bearer(alice.token))
+      .send({ delayMs: 'slow' })
+      .expect(400);
+    const locations = (res.body.error.details as Array<{ location: string }>).map((d) => d.location).sort();
+    expect(locations).toEqual(['body', 'params']);
+  });
+
+  it('authenticates before validating, so anonymous callers learn nothing about the schema', async () => {
+    const res = await request(app).post('/api/endpoints').send({ bogus: true }).expect(401);
+    expectErrorEnvelope(res.body, 'UNAUTHORIZED');
   });
 });
 

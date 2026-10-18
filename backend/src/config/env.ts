@@ -19,14 +19,20 @@ const envSchema = z.object({
     .string()
     .regex(/^\d+[smhd]$/, 'must be a duration such as 15m, 12h or 7d')
     .default('7d'),
+  // No default: URLs are configuration, never hardcoded (.ai/CONTEXT.md §3.1).
   CORS_ORIGINS: z
     .string()
-    .default('http://localhost:5173')
     .transform((value) =>
       value
         .split(',')
         .map((origin) => origin.trim())
         .filter(Boolean),
+    )
+    .pipe(
+      z
+        // Explicit protocol: plain z.url() accepts "localhost:5173" by reading "localhost:" as a scheme.
+        .array(z.url({ protocol: /^https?$/, error: 'each origin must be an http(s) URL' }))
+        .min(1, 'must list at least one origin'),
     ),
   TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(0),
 });

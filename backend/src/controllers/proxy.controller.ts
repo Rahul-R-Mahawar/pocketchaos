@@ -16,10 +16,14 @@ import { errorBody } from '../utils/apiResponse';
 import { exceedsDepth } from '../utils/json';
 import { normalizeEndpointPath } from '../utils/path';
 import { checkExternalUrl } from '../utils/ssrf';
-import { projectKeySchema } from '../validators/common.schema';
+import type { ProxyParams } from '../validators/common.schema';
 
 export const CHAOS_HEADER = 'X-PocketChaos-Applied';
 const JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
+
+/** .ai/CONTEXT.md §5: an injected fault returns overrideStatusCode (default 500) with exactly this body. */
+export const DEFAULT_FAULT_STATUS = 500;
+export const CHAOS_FAULT_BODY = { chaosFault: true, message: 'Injected by PocketChaos' } as const;
 
 type EndpointRecord = IChaosEndpoint & { _id: Types.ObjectId };
 
@@ -66,11 +70,19 @@ function isHttpMethod(method: string): method is HttpMethod {
   return (HTTP_METHODS as readonly string[]).includes(method);
 }
 
-function resolveRequestPath(req: Request): string {
+function resolveRequestPath(params: ProxyParams): string {
   // Express 5 named wildcard: /proxy/:projectKey{/*splat} -> splat = ["users", "profile"] or undefined.
-  const splat = (req.params as Record<string, unknown>).splat;
-  const segments = Array.isArray(splat) ? splat.map(String) : [];
-  return normalizeEndpointPath(segments.join('/'));
+  return normalizeEndpointPath((params.splat ?? []).join('/'));
+}
+
+function injectedFault(status: number, tags: string[]): ProxyResult {
+  return {
+    origin: 'pocketchaos',
+    status,
+    headers: { 'content-type': JSON_CONTENT_TYPE },
+    body: JSON.stringify(CHAOS_FAULT_BODY),
+    tags: [...tags, `failure:${status}`],
+  };
 }
 
 function isJsonContentType(contentType: string | undefined): boolean {
@@ -80,8 +92,9 @@ function isJsonContentType(contentType: string | undefined): boolean {
 async function fetchFromUpstream(endpoint: EndpointRecord, req: Request, tags: string[]): Promise<ProxyResult> {
   const target = new URL(endpoint.targetUrl as string);
   // Pass the caller's query string through. The host is untouched, but the final URL is re-validated anyway.
-  const incoming = new URL(req.originalUrl, 'http://pocketchaos.invalid');
-  incoming.searchParams.forEach((value, key) => target.searchParams.append(key, value));
+  const queryStart = req.originalUrl.indexOf('?');
+  const incomingQuery = new URLSearchParams(queryStart === -1 ? '' : req.originalUrl.slice(queryStart + 1));
+  incomingQuery.forEach((value, key) => target.searchParams.append(key, value));
 
   const check = await checkExternalUrl(target.toString());
   if (!check.safe && check.code === 'DNS_LOOKUP_FAILED') {
@@ -145,9 +158,11 @@ function applyJsonCorruption(result: ProxyResult): ProxyResult {
 }
 
 /**
- * Chaos pipeline, in order:
- *  1. delayMs (capped at 10 s)  2. failureRate roll -> injected 500, upstream never called
- *  3. forward to targetUrl, or serve mockResponseJson  4. overrideStatusCode  5. corruptJson
+ * Chaos pipeline (.ai/CONTEXT.md §5), in order:
+ *  1. delayMs (capped at 10 s)
+ *  2. failureRate roll -> overrideStatusCode (default 500) + CHAOS_FAULT_BODY; the upstream is never called
+ *  3. forward to targetUrl, or serve mockResponseJson, keeping the real status
+ *  4. corruptJson on the successful body
  * All steps are skipped while chaosConfig.enabled is false.
  */
 async function runChaosPipeline(endpoint: EndpointRecord, req: Request): Promise<ProxyResult> {
@@ -162,42 +177,27 @@ async function runChaosPipeline(endpoint: EndpointRecord, req: Request): Promise
       tags.push(`delay:${delay}ms`);
     }
     if (shouldInjectFailure(chaos.failureRate)) {
-      return envelopeError(500, 'CHAOS_INJECTED_FAILURE', 'PocketChaos injected a simulated server failure', [
-        ...tags,
-        'failure:500',
-      ]);
+      return injectedFault(chaos.overrideStatusCode ?? DEFAULT_FAULT_STATUS, tags);
     }
   }
 
-  let result = endpoint.targetUrl ? await fetchFromUpstream(endpoint, req, tags) : mockResponse(endpoint, tags);
+  const result = endpoint.targetUrl ? await fetchFromUpstream(endpoint, req, tags) : mockResponse(endpoint, tags);
   // SSRF blocks and upstream failures are reported as-is, without further chaos on top.
   if (!active || result.origin === 'pocketchaos') return result;
 
-  if (chaos.overrideStatusCode !== null && chaos.overrideStatusCode !== undefined) {
-    result = { ...result, status: chaos.overrideStatusCode, tags: [...result.tags, `status:${chaos.overrideStatusCode}`] };
-  }
-  if (chaos.corruptJson) {
-    result = applyJsonCorruption(result);
-  }
-  return result;
+  return chaos.corruptJson ? applyJsonCorruption(result) : result;
 }
 
-/** ALL /proxy/:projectKey/* */
-export const handleProxyRequest: RequestHandler = async (req, res) => {
+/** ALL /proxy/:projectKey/*. Params, query and body are validated by the route's `validate` middleware. */
+export const handleProxyRequest: RequestHandler<ProxyParams> = async (req, res) => {
   const startedAt = performance.now();
-  const keyCheck = projectKeySchema.safeParse(req.params.projectKey);
-  const path = resolveRequestPath(req);
+  const { projectKey } = req.params;
+  const path = resolveRequestPath(req.params);
   const method = req.method.toUpperCase();
 
   const send = (result: ProxyResult) => {
     res.status(result.status).set(result.headers).set(CHAOS_HEADER, result.tags.join(',') || 'none').send(result.body);
   };
-
-  if (!keyCheck.success) {
-    send(envelopeError(400, 'INVALID_PROJECT_KEY', 'projectKey must be 6 letters or digits', []));
-    return;
-  }
-  const projectKey = keyCheck.data;
 
   const endpoint: EndpointRecord | null = isHttpMethod(method)
     ? await ChaosEndpoint.findOne({ projectKey, method, path }).lean<EndpointRecord>()

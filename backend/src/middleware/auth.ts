@@ -35,12 +35,12 @@ export const requireAuth: RequestHandler = (req, _res, next) => {
     throw new AppError(401, 'INVALID_TOKEN', 'Invalid token');
   }
 
-  req.auth = { userId: payload.sub };
+  req.user = { id: payload.sub };
   next();
 };
 
 /** Typed accessor for handlers mounted behind `requireAuth`. */
 export function getAuthUserId(req: Request): string {
-  if (!req.auth) throw new AppError(401, 'UNAUTHORIZED', 'Authentication required');
-  return req.auth.userId;
+  if (!req.user) throw new AppError(401, 'UNAUTHORIZED', 'Authentication required');
+  return req.user.id;
 }

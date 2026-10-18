@@ -6,7 +6,7 @@ import { User, type UserDocument } from '../models/User';
 import { AppError } from '../utils/AppError';
 import { sendSuccess } from '../utils/apiResponse';
 import { generateProjectKey } from '../utils/projectKey';
-import { loginSchema, registerSchema } from '../validators/auth.schema';
+import type { LoginInput, RegisterInput } from '../validators/auth.schema';
 
 const BCRYPT_ROUNDS = 12;
 const PROJECT_KEY_ATTEMPTS = 5;
@@ -46,15 +46,16 @@ async function createUserWithUniqueProjectKey(email: string, passwordHash: strin
   throw new AppError(503, 'PROJECT_KEY_UNAVAILABLE', 'Could not allocate a project key, please retry');
 }
 
-export const register: RequestHandler = async (req, res) => {
-  const { email, password } = await registerSchema.parseAsync(req.body);
+// Bodies are validated by the route's `validate` middleware before these handlers run.
+export const register: RequestHandler<Record<string, never>, unknown, RegisterInput> = async (req, res) => {
+  const { email, password } = req.body;
   const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
   const user = await createUserWithUniqueProjectKey(email, passwordHash);
   sendSuccess(res, buildAuthPayload(user), 201);
 };
 
-export const login: RequestHandler = async (req, res) => {
-  const { email, password } = await loginSchema.parseAsync(req.body);
+export const login: RequestHandler<Record<string, never>, unknown, LoginInput> = async (req, res) => {
+  const { email, password } = req.body;
   const user = await User.findOne({ email }).select('+passwordHash');
 
   const passwordMatches = await bcrypt.compare(password, user?.passwordHash ?? (await getDummyHash()));

@@ -1,7 +1,14 @@
 import request from 'supertest';
 import { createApp } from '../../src/app';
 import { RequestLog } from '../../src/models/RequestLog';
-import { app, createEndpoint, expectErrorEnvelope, registerUser, type RegisteredUser } from '../helpers/api';
+import {
+  app,
+  createEndpoint,
+  expectErrorEnvelope,
+  expectSuccessEnvelope,
+  registerUser,
+  type RegisteredUser,
+} from '../helpers/api';
 import { useTestDatabase } from '../helpers/db';
 
 useTestDatabase();
@@ -23,7 +30,7 @@ describe('GET /api/mobile/pair/:projectKey', () => {
     });
 
     const res = await request(app).get(`/api/mobile/pair/${alice.projectKey}`).expect(200);
-    expect(res.body).toMatchObject({ success: true, error: null });
+    expectSuccessEnvelope(res.body);
     expect(res.body.data).toEqual({
       projectKey: alice.projectKey,
       proxyBasePath: `/proxy/${alice.projectKey}`,
@@ -116,7 +123,9 @@ describe('GET /api/logs/:projectKey', () => {
   });
 
   it('returns proxy telemetry in the documented shape', async () => {
-    const endpoint = await createEndpoint(alice.token, { chaosConfig: { enabled: true, overrideStatusCode: 503 } });
+    const endpoint = await createEndpoint(alice.token, {
+      chaosConfig: { enabled: true, failureRate: 100, overrideStatusCode: 503 },
+    });
     await request(app).get(`/proxy/${alice.projectKey}/users/profile`).set('X-PocketChaos-Platform', 'ios').expect(503);
 
     const res = await request(app).get(`/api/logs/${alice.projectKey}`).expect(200);
@@ -130,7 +139,7 @@ describe('GET /api/logs/:projectKey', () => {
         path: '/users/profile',
         statusReturned: 503,
         latencyMs: expect.any(Number),
-        chaosApplied: 'status:503',
+        chaosApplied: 'failure:503',
         clientPlatform: 'ios',
       },
     ]);

@@ -67,11 +67,15 @@ export async function setChaos(token: string, endpointId: string, chaos: Record<
   if (res.status !== 200) throw new Error(`patch chaos failed: ${res.status} ${JSON.stringify(res.body)}`);
 }
 
-/** Every PocketChaos-generated error body must match the standard envelope. */
+/** .ai/CONTEXT.md §4 success shape: exactly { success: true, data }. */
+export function expectSuccessEnvelope(body: unknown): void {
+  expect(body).toEqual({ success: true, data: expect.anything() });
+}
+
+/** .ai/CONTEXT.md §4 error shape: exactly { success: false, error: { code, message, details: [] } }. */
 export function expectErrorEnvelope(body: unknown, code: string): void {
   expect(body).toEqual({
     success: false,
-    data: null,
-    error: expect.objectContaining({ code, message: expect.any(String) }),
+    error: { code, message: expect.any(String), details: expect.any(Array) },
   });
 }

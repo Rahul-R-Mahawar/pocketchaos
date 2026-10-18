@@ -1,5 +1,7 @@
 import { Router, type RequestHandler } from 'express';
 import { handleProxyRequest } from '../controllers/proxy.controller';
+import { validate } from '../middleware/validate';
+import { proxyBodySchema, proxyParamsSchema, proxyQuerySchema } from '../validators/common.schema';
 
 export const PROXY_CONTENT_SECURITY_POLICY = "default-src 'none'; frame-ancestors 'none'; sandbox";
 
@@ -17,4 +19,8 @@ export const sandboxProxyResponses: RequestHandler = (_req, res, next) => {
 export const proxyRouter = Router();
 
 // Express 5 syntax for "/proxy/:projectKey/*": a named, optional wildcard so /proxy/ABC123 also matches.
-proxyRouter.all('/:projectKey{/*splat}', handleProxyRequest);
+proxyRouter.all(
+  '/:projectKey{/*splat}',
+  validate({ params: proxyParamsSchema, query: proxyQuerySchema, body: proxyBodySchema }),
+  handleProxyRequest,
+);

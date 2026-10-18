@@ -3,12 +3,12 @@ import { ChaosEndpoint } from '../models/ChaosEndpoint';
 import { assertProjectExists } from '../services/project.service';
 import { sendSuccess } from '../utils/apiResponse';
 import { serializePairedEndpoint } from '../utils/serializers';
-import { projectKeyParamsSchema } from '../validators/common.schema';
+import type { ProjectKeyParams } from '../validators/common.schema';
 import { MAX_ENDPOINTS_PER_USER } from './endpoint.controller';
 
 /** GET /api/mobile/pair/:projectKey: what the companion app needs to run chaos scenarios. */
-export const pairDevice: RequestHandler = async (req, res) => {
-  const { projectKey } = projectKeyParamsSchema.parse(req.params);
+export const pairDevice: RequestHandler<ProjectKeyParams> = async (req, res) => {
+  const { projectKey } = req.params;
   await assertProjectExists(projectKey);
 
   const endpoints = await ChaosEndpoint.find({ projectKey })

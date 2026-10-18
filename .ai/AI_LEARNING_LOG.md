@@ -85,3 +85,23 @@ Hostile `mockResponseJson` keys (`$where`, `a.b`, `__proto__`, `constructor.prot
 - **HEAD → 404:** HEAD requests are not mapped to GET endpoints.
 - **For the web phase:** the dashboard must **never** send its PocketChaos JWT to `/proxy/*`. The proxy forwards `Authorization` upstream by design.
 - **Dev-only audit warning:** `npm audit` flags a moderate `sprintf-js` advisory inside Jest's coverage toolchain (dev-only). The suggested "fix" downgrades ts-jest to 27. `npm audit --omit=dev` reports 0 vulnerabilities.
+
+---
+
+## Entry #3: Built against an empty contract, then aligned to `.ai/CONTEXT.md` (2026-10-18)
+
+- **Symptom:** Phase 1 and Entry #2 were built while `.ai/CONTEXT.md` was **0 bytes on disk**: the contract existed only in an unsaved editor buffer. The AI flagged the empty file, then inferred conventions from the prompt and the master plan. Once the file was saved, the backend diverged from it in five places.
+- **Root cause:** agents read the file system, not the editor. An empty context file fails silently: nothing errors, the model just fills the gap with its own defaults.
+- **Fixes (all covered by `npm test`, now 8 suites / 349 tests):**
+
+| Contract | Was | Now |
+|----------|-----|-----|
+| §4 envelope | `{ success, data, error: null }` / `{ success, data: null, error }`, `details` optional | `{ success: true, data }` / `{ success: false, error: { code, message, details: [] } }`; `details` always an array (`expectSuccessEnvelope` / `expectErrorEnvelope` assert the exact shape) |
+| §3.2 validation | Zod `parse` inside each controller | `validate({ body, params, query })` middleware on every route before the controller; mutation routes reject unknown query keys; issues report their `location` |
+| §5 injected fault | Fixed 500 in the API envelope; `overrideStatusCode` rewrote *successful* responses | Fault returns `overrideStatusCode ?? 500` with exactly `{ chaosFault: true, message: "Injected by PocketChaos" }`; successful responses keep their real status; `overrideStatusCode` restricted to 400–599 |
+| §3.1 no hardcoded URLs | `CORS_ORIGINS` defaulted to `http://localhost:5173`; proxy parsed queries against a dummy `http://pocketchaos.invalid` base | `CORS_ORIGINS` required and validated; query parsed with `URLSearchParams` |
+| §3.4 naming | `req.auth.userId` | `req.user.id` |
+| §2 runtime | `engines: node >=22` | `>=20.19.0` (the MongoDB driver's own floor), `@types/node@20` |
+
+- **New bug found by the new env tests:** Zod's `z.url()` accepted `localhost:5173` as a CORS origin, because it reads `localhost:` as a URL scheme. Fixed with `z.url({ protocol: /^https?$/ })`. Guard: `tests/unit/env.test.ts`.
+- **Lesson:** run a pre-flight check before any agent run (`wc -c .ai/*.md .ai/agents/*.md`), and treat an empty context or agent file as a blocker, not a warning. `.ai/agents/architect-agent.md` was still empty at this point.

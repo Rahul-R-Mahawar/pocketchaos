@@ -5,18 +5,19 @@ export const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
 export type HttpMethod = (typeof HTTP_METHODS)[number];
 
 export const MAX_DELAY_MS = 10_000;
-export const MIN_OVERRIDE_STATUS = 200;
+/** overrideStatusCode is the status of an injected fault, so only error codes make sense. */
+export const MIN_OVERRIDE_STATUS = 400;
 export const MAX_OVERRIDE_STATUS = 599;
 
 export interface ChaosConfig {
   enabled: boolean;
   /** Latency injected before responding, 0..10000 ms. */
   delayMs: number;
-  /** Percentage (0..100) of requests that fail with an injected 500. */
+  /** Percentage (0..100) of requests that fail with an injected fault. */
   failureRate: number;
-  /** When set, replaces the status code of every non-failed response. */
+  /** Status of an injected fault, 400..599; null means 500. Successful responses keep their real status. */
   overrideStatusCode: number | null;
-  /** Mutates random fields of JSON bodies to null / wrong types / missing. */
+  /** Mutates random fields of successful JSON bodies to null / wrong types / missing. */
   corruptJson: boolean;
 }
 
