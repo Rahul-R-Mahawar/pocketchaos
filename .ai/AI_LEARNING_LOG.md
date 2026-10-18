@@ -105,3 +105,42 @@ Hostile `mockResponseJson` keys (`$where`, `a.b`, `__proto__`, `constructor.prot
 
 - **New bug found by the new env tests:** Zod's `z.url()` accepted `localhost:5173` as a CORS origin, because it reads `localhost:` as a URL scheme. Fixed with `z.url({ protocol: /^https?$/ })`. Guard: `tests/unit/env.test.ts`.
 - **Lesson:** run a pre-flight check before any agent run (`wc -c .ai/*.md .ai/agents/*.md`), and treat an empty context or agent file as a blocker, not a warning. `.ai/agents/architect-agent.md` was still empty at this point.
+
+---
+
+## Entry #4: Phase 2 `/web` dashboard build + security audit (2026-10-18)
+
+> Numbered #4 because Entry #3 already holds the CONTEXT.md alignment.
+
+Context: React 19 + Vite 8 + TypeScript 5.9 + Tailwind 4 dashboard, Vitest 5 + Testing Library. Verified with 125 component/unit tests, `tsc -b && vite build`, and a live walkthrough in the in-app browser against the real backend (`npm run dev:memory`).
+Each item is labelled **observed** (failed in a test or live run) or **review** (caught by reading the code before anything failed).
+
+### A. State and async bugs
+
+| # | How found | Bug | Fix | Guard |
+|---|-----------|-----|-----|-------|
+| 4.1 | **observed** (failing test, live-path probe) | A 2xx `{ success: true, data }` with the wrong shape (e.g. `data: null`) went straight into `.map()` / `.length`, throwing `TypeError: Cannot read properties of null` during render, which blanked the whole app with no recovery. | API client rejects non-array endpoint/log lists as `UNEXPECTED_RESPONSE` (shown by the existing retry/"Reconnecting…" UI); `ErrorBoundary` around the app, each endpoint card and the telemetry panel as a backstop. | `client.test.ts` (malformed lists), `ErrorBoundary.test.tsx` |
+| 4.2 | **observed** (failing test) | If the proxy tester ever rejected, "Test in Browser" stayed on "Waiting for proxy…" forever and produced an unhandled promise rejection. | `try/catch/finally` turns it into an error result and re-enables the button. | `EndpointCard.test.tsx` |
+| 4.3 | **observed** (deliberately broken code) | The test "a slow PATCH response must not overwrite a newer slider edit" still **passed** when the merge logic was removed: its second request resolved instantly, hiding the moment the slider snapped back. The app code was correct; the **test** was too weak. | Second PATCH is also deferred, so the in-between state is asserted. | Verified: passes on real code, fails on the broken version |
+| 4.4 | **review** | "Test in Browser" for POST/PUT/PATCH spread `headers` twice, so `Content-Type` replaced `Accept`. | Headers built in one object. | `proxyTester.test.ts` |
+| 4.5 | **review** | Hooks updated refs during render (React rule; breaks under concurrent rendering). | Ref updates moved into effects. | n/a |
+
+### B. Layout / tooling problems
+
+- **4.6 observed (live, 1024 px):** the navbar wrapped onto two lines and covered the top of the sticky telemetry panel. Fix: secondary navbar items only on wider screens, `lg:flex-nowrap`.
+- **4.7 observed (tests):** `findBy*`/`waitFor` hang under Vitest fake timers (Testing Library only detects Jest's fakes), giving a 5 s timeout that looked like an app bug. Rule: with fake timers, `await act(() => vi.advanceTimersByTimeAsync(ms))` then synchronous `getBy*`.
+- **4.8 observed (environment):** the desktop preview launcher could not start servers under `~/Desktop` (macOS privacy: `getcwd: Operation not permitted`). Servers were run from the shell instead; `.claude/launch.json` is unverified here.
+- **4.9 TypeScript:** `tsc -b` on `/web` found no errors in the app code. lucide-react v1 renamed icons (`Trash2` → `Trash`, `CircleHelp` → `CircleQuestionMark`); this was found by grepping the typings before compiling. The one real TS error this phase was in the backend helper script (TS2835: dynamic `import()` under `module: nodenext` needs an extension); it now uses `require`.
+- **4.10 CORS:** no CORS bug occurred. Prevented by: `server.strictPort` on 5173 (Vite can't silently move to an origin the backend rejects), the backend exposing `X-PocketChaos-Applied`, bearer tokens instead of cookies (no credentialed CORS). The live run showed the `OPTIONS … 204` preflight before each PATCH.
+
+### C. Security audit of `/web` (sec-auditor pass)
+
+Checked clean:
+- **Secrets:** no secrets in source or bundle. A canary build with fake `JWT_SECRET` / `MONGODB_URI` / `CORS_ORIGINS` in the environment leaked **0** of them (only `VITE_*` is ever inlined; no custom `envPrefix`). No source maps shipped. `npm audit --omit=dev`: 0 vulnerabilities.
+- **XSS sinks:** none. No `dangerouslySetInnerHTML`, `innerHTML`, `eval`; proxy/upstream bodies render as text in `<pre>` (test asserts an `<img onerror>` payload stays text).
+- **JWT handling:** never sent to `/api/auth/*` or to `/proxy/*` (separate client); 401 session codes sign out, `INVALID_CREDENTIALS` stays inline.
+- **Request load:** polling is a non-overlapping `setTimeout` chain, paused while the tab is hidden, with 429 backoff; slider PATCHes are debounced.
+
+Accepted / recommended for deployment:
+- **JWT in `localStorage`** (readable by any XSS). Recommended hardening: a build-only CSP `<meta>` (`default-src 'self'; connect-src 'self' <API origin>; object-src 'none'; base-uri 'none'`) via a `transformIndexHtml` plugin. `frame-ancestors` must come from the host's response headers. Not shipped yet because verifying it needs a `vite preview` origin added to the backend's CORS list.
+- **Lost edits:** a debounced slider edit still pending when the user logs out or closes the tab within 350 ms is dropped.
