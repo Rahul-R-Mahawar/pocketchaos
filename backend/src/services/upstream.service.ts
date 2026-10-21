@@ -12,6 +12,8 @@ const FORWARDED_REQUEST_HEADERS = [
   'accept-language',
   'authorization',
   'content-type',
+  // Lets the upstream de-duplicate retried and replayed writes (mobile offline queue, retries).
+  'idempotency-key',
   'if-modified-since',
   'if-none-match',
   'user-agent',

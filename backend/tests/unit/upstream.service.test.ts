@@ -54,6 +54,8 @@ describe('forwardRequest', () => {
         cookie: 'session=pocketchaos-dashboard',
         'x-forwarded-for': '10.0.0.1',
         host: 'evil.internal',
+        'idempotency-key': '8f3c2a1e-0b9d-4c5e-9f7a-1d2e3f4a5b6c',
+        'x-client-platform': 'react-native',
       },
     });
 
@@ -63,6 +65,10 @@ describe('forwardRequest', () => {
     expect(received.cookie).toBeUndefined();
     expect(received['x-forwarded-for']).toBeUndefined();
     expect(received.host).toBe(new URL(baseUrl).host);
+    // Replays from the mobile offline queue reuse one key so the upstream API can drop duplicates.
+    expect(received['idempotency-key']).toBe('8f3c2a1e-0b9d-4c5e-9f7a-1d2e3f4a5b6c');
+    // PocketChaos-internal client hints stay internal.
+    expect(received['x-client-platform']).toBeUndefined();
   });
 
   it('forwards the method and body with an explicit content-length', async () => {
