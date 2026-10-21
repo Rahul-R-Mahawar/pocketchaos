@@ -92,7 +92,7 @@ The backend is running, and I've just started our demo seeder. It signs in a dem
 
 On the dashboard, each endpoint has live chaos controls: latency, failure rate, fault status code and corrupt JSON. Changes save instantly. On the right is live telemetry: every request through the proxy appears within two seconds. Green is success, amber means the payload was corrupted, red is an injected fault.
 
-Now the phone. I type the project key on the Pair tab, and the app pulls the endpoints and their chaos rules. No password or token ever reaches the device. On the Runner tab I fire a batch with exponential backoff retries. The summary shows success rate, latency, faults, and corrupted payloads caught by our schema integrity detector. One tap opens the payload inspector: the exact field that changed type, the retry timeline and the raw body.
+Now the phone. I type the project key on the Pair tab, and the app pulls the endpoints and their chaos rules. No password or token ever reaches the device. On the Runner tab I fire a batch with exponential backoff retries. The summary shows success rate, latency, faults, and corrupted payloads caught by our schema integrity detector. One tap opens the payload inspector: the fields that were removed or changed, the request headers with its idempotency key, and the raw body.
 
 Last, offline mode. I simulate going offline and run a checkout batch: every request is queued and saved. Back online, one tap replays the queue in order, each request with its original idempotency key.
 ```
@@ -109,7 +109,7 @@ Last, offline mode. I simulate going offline and run a checkout batch: every req
 | 1:25 | iOS Simulator, **Pair** tab | Type the key from the banner (lowercase works; it is uppercased), then tap **Pair device**. The endpoint list with chaos rules appears. |
 | 1:34 | Simulator, **Runner** tab | Tap the **Run All** chip, keep **Requests per endpoint: 5** and **Exponential backoff retries** on, then tap **Run chaos batch**. With the feed's 2.5 s delay the batch takes about 20 s, so narrate over it. |
 | 1:38 | Simulator, Runner summary | The metrics fill in live: **Success**, **Avg latency**, **4xx/5xx faults**, **Corrupted caught**, then the line "Detector caught N of N injected corruptions". |
-| 1:55 | Simulator, **Payload Inspector** | Tap a **SCHEMA_CORRUPTION_DETECTED** row. Scroll slowly through **Schema integrity** (e.g. `id: type_changed`), **Retry timeline** and **Raw response body**. Close it. |
+| 1:55 | Simulator, **Payload Inspector** | Tap a **SCHEMA_CORRUPTION_DETECTED** row. Scroll slowly through **Schema integrity** (e.g. `verified: missing_field`), the request headers with **Idempotency-Key**, and **Raw response body**. Close it. |
 | 2:02 | Simulator, **Offline** tab | Turn on **Simulate Offline Mode**. On **Runner**, tap the **Checkout** chip and run: nothing is sent, so it finishes instantly. Back on **Offline** it shows "5 pending". |
 | 2:09 | Simulator, **Offline** tab | Turn **Simulate Offline Mode** off and tap **Replay & Sync Queue**. The banner reads "Delivered 5, rejected 0 of 5". |
 | 2:14 | Terminal 3 | Press **Ctrl+C** to stop traffic (the summary line prints) and cut to the deck. |
