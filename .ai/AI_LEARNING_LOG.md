@@ -159,7 +159,7 @@ Context: Expo SDK 58, React Native 0.88 and TypeScript 6 (strict, `noUncheckedIn
 | # | How found | Bug | Fix | Guard |
 |---|-----------|-----|-----|-------|
 | 5.1 | **review** (read the polyfill source) | React Native's `URL` polyfill is regex-based and never throws on invalid input; it also mishandles IPv6 hosts. Jest uses Node's strict WHATWG `URL`, so the validator tests passed while the real app would have accepted garbage server URLs. | `normalizeBaseUrl` now uses one explicit scheme/host/port grammar that behaves the same in both. It rejects credentials, `?` and `#`, non-http(s) schemes, and ports above 65535. | `serverPresets.test.ts` |
-| 5.2 | **observed** (failing backend test) | The proxy dropped `Idempotency-Key`, so the dedupe key that queue replays depend on never reached upstream. | `idempotency-key` was added to the proxy's forwarded headers. This backend change is **not committed yet**; it is pending its own commit. | `upstream.service.test.ts` |
+| 5.2 | **observed** (failing backend test) | The proxy dropped `Idempotency-Key`, so the dedupe key that queue replays depend on never reached upstream. | `idempotency-key` was added to the proxy's forwarded headers, committed separately in `97737ec`. | `upstream.service.test.ts` |
 | 5.3 | **observed** (live) | Replayed requests showed "OK" even when the body was corrupted, but replays never run the integrity check. | Replays now say "Delivered (integrity not checked)". | `components.test.tsx` |
 | 5.4 | **review** | The first version of `OfflineQueue.load()` wrote an empty queue when the *read* failed. | A read failure rejects without writing. 5.6 below closes the rest of this bug. | `offlineQueue.test.ts` |
 | 5.5 | **review** | `RunnerContext` wrote a ref during render. | The ref write moved into an effect. 5.9 later replaced that ref with `isOffline()`. | n/a |
@@ -239,6 +239,6 @@ How often a 100%-corrupted body was reported INTACT, before and after 5.13 (5 re
 ### F. Known limitations
 
 - **1-field bodies at 100% corruption.** Consensus cannot recover the schema when every response corrupts the only field, and a wrong type can win the majority (about 21–32% still INTACT). The fix is a trusted baseline: one request with corruption off, or a clean batch earlier. The tracker keeps that baseline across batches.
-- **At-least-once replay.** A delivered request whose removal could not be saved is re-sent. This relies on upstream honouring `Idempotency-Key`. The proxy only forwards that header once the pending backend change in 5.2 is committed.
+- **At-least-once replay.** A delivered request whose removal could not be saved is re-sent. This relies on upstream honouring `Idempotency-Key`, which the proxy forwards since `97737ec` (5.2).
 - **Whole-queue reset.** Corrupt or tampered storage resets the whole queue rather than dropping only the bad items. That is simpler, and the user is told.
 - **Early offline toggle.** If Simulate Offline is toggled before its saved value has loaded (the first few ms after launch), the load can overwrite the toggle.
