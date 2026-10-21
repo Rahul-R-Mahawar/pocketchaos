@@ -144,3 +144,101 @@ Checked clean:
 Accepted / recommended for deployment:
 - **JWT in `localStorage`** (readable by any XSS). Recommended hardening: a build-only CSP `<meta>` (`default-src 'self'; connect-src 'self' <API origin>; object-src 'none'; base-uri 'none'`) via a `transformIndexHtml` plugin. `frame-ancestors` must come from the host's response headers. Not shipped yet because verifying it needs a `vite preview` origin added to the backend's CORS list.
 - **Lost edits:** a debounced slider edit still pending when the user logs out or closes the tab within 350 ms is dropped.
+
+---
+
+## Entry #5: Phase 3 `/mobile` build + QA-breaker / security-auditor pass (2026-10-21)
+
+Context: Expo SDK 58, React Native 0.88 and TypeScript 6 (strict, `noUncheckedIndexedAccess`), tested with jest-expo and React Native Testing Library v14.
+- **Live checks (before the QA pass).** The build was verified on the iOS 26 simulator in Expo Go against `npm run dev:memory`: pairing, a chaos batch, the inspector, a queue that survived a kill and relaunch, and a replay of 10 queued requests that reached the server exactly 10 times. On the Android emulator, `10.0.2.2:4000` was reachable. The QA fixes in section B were verified by tests only, not re-run on a device.
+- **QA pass.** It added `src/qa/` with 64 tests, bringing the total to 233 tests in 15 suites, all passing with 0 console warnings. `npx tsc --noEmit` is clean.
+- **Labels.** Each item is labelled **observed** (it failed in a test or a live run before the fix) or **review** (caught by reading the code).
+
+### A. Bugs from the build phase
+
+| # | How found | Bug | Fix | Guard |
+|---|-----------|-----|-----|-------|
+| 5.1 | **review** (read the polyfill source) | React Native's `URL` polyfill is regex-based and never throws on invalid input; it also mishandles IPv6 hosts. Jest uses Node's strict WHATWG `URL`, so the validator tests passed while the real app would have accepted garbage server URLs. | `normalizeBaseUrl` now uses one explicit scheme/host/port grammar that behaves the same in both. It rejects credentials, `?` and `#`, non-http(s) schemes, and ports above 65535. | `serverPresets.test.ts` |
+| 5.2 | **observed** (failing backend test) | The proxy dropped `Idempotency-Key`, so the dedupe key that queue replays depend on never reached upstream. | `idempotency-key` was added to the proxy's forwarded headers. This backend change is **not committed yet**; it is pending its own commit. | `upstream.service.test.ts` |
+| 5.3 | **observed** (live) | Replayed requests showed "OK" even when the body was corrupted, but replays never run the integrity check. | Replays now say "Delivered (integrity not checked)". | `components.test.tsx` |
+| 5.4 | **review** | The first version of `OfflineQueue.load()` wrote an empty queue when the *read* failed. | A read failure rejects without writing. 5.6 below closes the rest of this bug. | `offlineQueue.test.ts` |
+| 5.5 | **review** | `RunnerContext` wrote a ref during render. | The ref write moved into an effect. 5.9 later replaced that ref with `isOffline()`. | n/a |
+
+Tooling and TypeScript (**observed**):
+- `expo install` put Jest packages under `dependencies`, so they were moved to `devDependencies`.
+- TypeScript 6 needs `"types": ["jest"]`.
+- Jest failed with "Cannot find module 'expo-asset'", fixed by installing `expo-asset` and `expo-font`.
+- Jest also failed with "Module '1' is missing from the asset registry", fixed by mocking `@expo/vector-icons`.
+- TS2339: a union of literal `kind`s did not narrow. Fixed with `kind !== 'response'`.
+- TS7024: an `it.each` table written with `as const`. Fixed by typing it as `it.each<[...]>`.
+- TS2353: RNTL's `toHaveTextContent` has no `normalizeWhitespace` option, so the test uses a regex instead.
+- `App.tsx` imported a module that does not exist.
+- Port 4000 instead of 5000, because macOS AirPlay holds port 5000.
+- Simulator quirk: a `UISwitch` needs a tap with `duration: 0.25` to toggle, and screenshots lag behind inputs.
+
+### B. QA-breaker pass: bugs proven by a failing test first, then fixed
+
+Of the 64 QA tests, the 19 that target these bugs were run red before any fix. The other 45 are regression tests that already passed (see E).
+- **Red for the right reason.** One red test first failed for an unrelated reason: a one-shot read fault was used up by the wrong caller (see D). It was corrected and re-run red before the fix.
+- **5.10 re-proven.** Its first red run stopped at the new notice text. The stale-badge half was then proven separately by reverting only the badge fix: the test fails on the "sending" assertion.
+- **Leak found after the fixes.** The AsyncStorage mock leak in D only appeared during the first all-green run.
+
+| # | How found | Bug | Fix | Guard (`src/qa/`) |
+|---|-----------|-----|-----|-------|
+| 5.6 | **observed** | **Data loss.** After a failed queue read, the in-memory state was empty. The next `enqueue` built on it and **overwrote every saved request**. The old notice even promised that "new requests will still be queued". A sync after a failed read also reported the queue as "0 of 0". | Nothing is written until the saved queue has been read successfully. Until then, every mutation re-reads first, and `sync` reloads first. A read that keeps failing makes the change reject, which leaves the saved data intact. | `offlineQueue.qa` (3 tests), `app.qa` (an offline batch after an unreadable queue keeps the 2 saved items: 2 + 10 = 12) |
+| 5.7 | **observed** | `runBatch` set `result.queued` *before* calling `enqueue`. When the queue refused (`QueueFullError` or a storage error), the row still said "queued", the summary over-counted, and the original network error message was overwritten. | `queued` is now set only after the queue accepts the request. A refused request stays `network_error`, with "…not queued (reason)" appended to its own message. | `offlineQueue.qa` › enqueue failures |
+| 5.8 | **observed** | **Duplicate Run tap.** Two taps in the same frame both read `running === false` from the render closure. That started two batches: 20 requests instead of 10, sharing one integrity tracker. | A `runningRef` is set synchronously. | `app.qa` › two Run taps |
+| 5.9 | **observed** | Turning on Simulate Offline **during a replay** did not stop the replay, so the remaining queued requests still went out. | The queue context keeps an `offlineRef` that the toggle sets synchronously. `replayOne` checks it for each item and returns `retryLater`. The runner now uses the same `isOffline()` instead of its own effect-synced copy. | `app.qa` › mid-replay toggle (1 request sent, 2 stay queued) |
+| 5.10 | **observed** | A storage write that failed mid-sync showed a bare "write failed" notice. It also left a permanent "sending" badge, because the in-flight marker was saved but its removal was not. | The notice now says the sync stopped and that unconfirmed requests stay queued and are re-sent with the same Idempotency-Key. The badge only shows while a sync is running. | `app.qa`: the retry re-sends `key-1` and then `key-2` (at-least-once) |
+| 5.11 | **observed** | If the server settings could not be read at startup, `ConfigContext` marked itself hydrated and **saved the defaults over them**. This is the same failure as 5.6. | A `mayPersist` flag allows writes only after a successful read or a user edit. | `app.qa` › settings not overwritten |
+| 5.12 | **observed** | A body of 9,000 nested `[` characters is 18 KB, under the 20 KB preview limit, and `JSON.parse` handles it. `JSON.stringify(…, null, 2)` then throws a `RangeError`, which crashed the inspector into its error boundary. | `formatBody` falls back to the raw text when pretty-printing fails. | `integrity.qa`, `app.qa` |
+| 5.13 | **observed** (measured) | **With corruption on for 100% of requests, corrupted bodies were reported INTACT.** There is no clean baseline in that case, so a field that the batch has no majority for was simply not judged. Measured over 1,000 batches using the backend's real `corruptJson` (table below). | When the consensus baseline has no strict majority for a field's type, or for whether the field is present, any body touching that field is **UNVERIFIED**, never INTACT. The row reads "OK (integrity unverified)" and the inspector lists the paths under "Not verifiable". Raising the majority threshold to 2/3 was also measured (400 batches) and rejected: it cut detection on a 4-field body from about 81% to 55%. | `integrity.qa` › 100% corrupted payloads |
+
+How often a 100%-corrupted body was reported INTACT, before and after 5.13 (5 requests per batch, the default; 1,000 batches):
+
+| Body shape | Before | After | Caught (unchanged) |
+|---|---|---|---|
+| 4 flat fields | 16.8% | 1.5% | ~83% |
+| nested (7 fields, an array and an object) | 3.3% | 0.0% | ~96% |
+| list of 3 objects | 0.5% | 0.0% | ~99% |
+| 1 field | 70.7% | 32.1% | ~30% (see F) |
+
+### C. Security audit of `/mobile` (sec-auditor pass)
+
+- **5.14 review (hardened):** stored queue items and pairing responses are now treated as untrusted input.
+  - **Stored queue items:** `projectKey` must match `^[A-Z0-9]{6}$`, and `path` must not contain `.` or `..` segments, including the `%2e` and backslash forms that URL parsers resolve. Items failing this are treated as corrupt storage, so they are never replayed.
+  - **Pairing responses:** the endpoint `path` and `proxyPath` get the same check. This means a hostile pairing server cannot steer requests to `/proxy/K7Q2XM/../../api/...`.
+  - **Tests:** 11 invalid-key variants never reach the network: lowercase, symbols, a space, a dash, `Ä`, a full-width `Ｋ`, a trailing `\n`, 5 or 7 characters, empty, and `../../`.
+- **Checked clean:**
+  - **Secrets:** no hardcoded secrets. Only `EXPO_PUBLIC_*` values (a base URL and a port, which are not secrets) are inlined. A canary `expo export` for iOS and Android had 0 hits, and `.env` is ignored by the root `.gitignore`.
+  - **Code hygiene:** no `console.*`, no `any`, and no WebView or HTML rendering. Response bodies always render as `<Text>`, and a test asserts that `<script>` and `<img onerror>` payloads stay as text.
+  - **Credentials:** the device never holds a JWT, because it uses key-only routes.
+  - **Contained failures:** every screen and the inspector have an error boundary.
+- **Accepted:**
+  - **Cleartext HTTP.** `usesCleartextTraffic` on Android and `NSAllowsLocalNetworking` on iOS are there for LAN development only. Drop cleartext for a release build pointed at an HTTPS cloud URL.
+  - **`npm audit`.** It reports 22 findings, all in Expo and Metro build tooling, none of which is in the shipped bundle.
+
+### D. Test-infrastructure lessons (**observed**)
+
+- **A one-shot fault was used up by the wrong caller.** `MemoryStorage.failNextRead` was consumed by the *simulate-offline flag* read, which happens to run first. The queue load succeeded, and the test failed for a reason unrelated to the bug. Fix: `failNextReadOf(key)` targets a single key.
+- **`restoreMocks` does not restore AsyncStorage's mock.** `jest.spyOn` on the AsyncStorage mock returns its existing `jest.fn`, which `restoreMocks` never restores. A rejecting `setItem` leaked into two later tests. Restore it by hand with `getMockImplementation()`.
+- **A fake Axios adapter never times out.** Axios enforces `timeout` only inside its built-in adapters. The timeout tests therefore use a deadline transport on fake timers instead.
+- **Two `fireEvent.press` calls can't reproduce a double tap.** RNTL re-renders between them, which disables the button. A probe component calls the context function twice inside one `act()` instead.
+
+### E. Checked and already correct (kept as regression tests)
+
+- **Single-flight sync:** a second and third tap return the *same* promise, and a tap after completion starts a fresh sync.
+- **Empty queue:** replaying an empty queue makes 0 replay calls and 0 storage writes.
+- **Unsaved in-flight marker:** a request whose marker could not be saved is never sent.
+- **Timeout boundary:** a response at 3,999 ms against a 4,000 ms timeout is a success with no retry; at 4,000 ms it is a timeout. Every retry gets the full timeout, and the worst case with 2 retries is exactly 12,900 ms.
+- **Timeouts:** a timeout is never queued, because delivery is ambiguous.
+- **Malformed JSON:** seven malformed bodies all give INVALID_JSON without a crash: truncated, empty, an HTML error page, `NaN`, two concatenated documents, a trailing comma, and single quotes.
+- **Broken 5xx bodies:** a 5xx with a garbage body stays a 5xx fault.
+- **Malformed pairing responses:** each gives `UNEXPECTED_RESPONSE`.
+
+### F. Known limitations
+
+- **1-field bodies at 100% corruption.** Consensus cannot recover the schema when every response corrupts the only field, and a wrong type can win the majority (about 21–32% still INTACT). The fix is a trusted baseline: one request with corruption off, or a clean batch earlier. The tracker keeps that baseline across batches.
+- **At-least-once replay.** A delivered request whose removal could not be saved is re-sent. This relies on upstream honouring `Idempotency-Key`. The proxy only forwards that header once the pending backend change in 5.2 is committed.
+- **Whole-queue reset.** Corrupt or tampered storage resets the whole queue rather than dropping only the bad items. That is simpler, and the user is told.
+- **Early offline toggle.** If Simulate Offline is toggled before its saved value has loaded (the first few ms after launch), the load can overwrite the toggle.
