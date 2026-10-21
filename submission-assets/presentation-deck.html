@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PocketChaos — Hackathon Deck</title>
+<meta name="description" content="PocketChaos: Mobile API Chaos Proxy & Negative-Testing Companion. FiftyFive Build With AI Hackathon 2026.">
+<style>
+  :root {
+    --bg: #07090d;
+    --slide: #0c1017;
+    --panel: #121824;
+    --panel-2: #172031;
+    --line: #243044;
+    --text: #e8edf5;
+    --muted: #9aa7bb;
+    --faint: #66748a;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --cyan: #22d3ee;
+    --violet: #a78bfa;
+    --blue: #60a5fa;
+    --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+  body { overflow: hidden; }
+
+  /* ---------- stage: slides are authored at 1280×720 and scaled to fit ---------- */
+  .stage { position: fixed; inset: 0; overflow: hidden; }
+  /* Absolutely centred: a grid-centred item larger than its container falls back to start alignment. */
+  .deck { width: 1280px; height: 720px; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); transform-origin: center center; }
+  .slide {
+    position: absolute; inset: 0; width: 1280px; height: 720px; overflow: hidden;
+    background:
+      radial-gradient(900px 420px at 100% 0%, rgba(34, 211, 238, 0.07), transparent 60%),
+      radial-gradient(700px 380px at 0% 100%, rgba(167, 139, 250, 0.06), transparent 60%),
+      var(--slide);
+    border: 1px solid var(--line); border-radius: 18px;
+    padding: 56px 64px 64px;
+    display: flex; flex-direction: column;
+    opacity: 0; visibility: hidden; transform: translateX(24px);
+    transition: opacity .35s ease, transform .35s ease, visibility .35s;
+  }
+  .slide.active { opacity: 1; visibility: visible; transform: none; }
+  .slide.before { transform: translateX(-24px); }
+
+  .kicker { font: 600 13px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--cyan); display: flex; gap: 12px; align-items: center; }
+  .kicker .rubric { color: var(--bg); background: var(--amber); padding: 5px 8px; border-radius: 6px; letter-spacing: .06em; }
+  h1 { font-size: 46px; line-height: 1.08; letter-spacing: -0.02em; font-weight: 800; margin-top: 14px; }
+  h1 .soft { color: var(--muted); font-weight: 600; }
+  h2 { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+  p, li { font-size: 17px; line-height: 1.5; color: var(--muted); }
+  strong { color: var(--text); font-weight: 650; }
+  code, .mono { font-family: var(--mono); font-size: .88em; color: var(--text); }
+  .lede { font-size: 20px; color: var(--muted); margin-top: 14px; max-width: 980px; }
+  .body { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; margin-top: 22px; }
+  .grid { display: grid; gap: 18px; }
+  .g2 { grid-template-columns: 1fr 1fr; }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; }
+  .card h2 { margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+  .card p, .card li { font-size: 15.5px; }
+  .card ul { list-style: none; display: grid; gap: 7px; }
+  .card ul li { padding-left: 18px; position: relative; }
+  .card ul li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 6px; height: 6px; border-radius: 2px; background: var(--faint); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; display: inline-block; }
+  .green { color: var(--green); } .amber { color: var(--amber); } .red { color: var(--red); } .cyan { color: var(--cyan); } .violet { color: var(--violet); } .blue { color: var(--blue); }
+  .bg-green { background: var(--green); } .bg-amber { background: var(--amber); } .bg-red { background: var(--red); } .bg-cyan { background: var(--cyan); } .bg-violet { background: var(--violet); } .bg-blue { background: var(--blue); }
+  .footer { position: absolute; left: 64px; right: 64px; bottom: 24px; display: flex; justify-content: space-between; font: 500 12px/1 var(--mono); color: var(--faint); letter-spacing: .04em; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font: 600 13px/1 var(--mono); padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); }
+
+  /* ---------- slide 1 ---------- */
+  .title-wrap { flex: 1; display: grid; grid-template-columns: 1.25fr .75fr; gap: 40px; align-items: center; }
+  .brand { font-size: 84px; font-weight: 850; letter-spacing: -0.045em; line-height: .95; }
+  .brand span { background: linear-gradient(90deg, var(--cyan), var(--violet)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .tagline { font-size: 27px; line-height: 1.25; color: var(--text); margin-top: 18px; font-weight: 600; letter-spacing: -0.01em; }
+  .event { margin-top: 26px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .terminal { background: #05070a; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.45); }
+  .terminal .bar { display: flex; gap: 7px; padding: 12px 14px; border-bottom: 1px solid var(--line); background: #0a0e14; }
+  .terminal .bar i { width: 11px; height: 11px; border-radius: 50%; background: #2b3546; }
+  .terminal pre { font: 13px/1.75 var(--mono); padding: 16px 18px; color: var(--muted); white-space: pre; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 34px; }
+  .stat { border-left: 3px solid var(--line); padding-left: 14px; }
+  .stat b { display: block; font-size: 34px; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+  .stat span { font-size: 13.5px; color: var(--muted); }
+
+  /* ---------- slide 2 ---------- */
+  .problem-card { padding: 24px; }
+  .problem-card .big { font: 800 40px/1 var(--sans); letter-spacing: -0.03em; margin: 6px 0 10px; }
+  .today { margin-top: 18px; display: grid; grid-template-columns: 200px 1fr 1fr 1fr; gap: 14px; align-items: stretch; }
+  .today .label { font: 700 13px/1.4 var(--mono); color: var(--faint); text-transform: uppercase; letter-spacing: .1em; align-self: center; }
+  .today .item { background: var(--panel); border: 1px dashed var(--line); border-radius: 12px; padding: 14px 16px; font-size: 14.5px; color: var(--muted); line-height: 1.45; }
+  .today .item b { color: var(--text); display: block; margin-bottom: 4px; font-size: 15px; }
+
+  /* ---------- slide 3 ---------- */
+  .journey { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 18px; counter-reset: step; }
+  .step { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; position: relative; }
+  .step::before { counter-increment: step; content: counter(step); font: 800 12px/1 var(--mono); color: var(--bg); background: var(--cyan); border-radius: 6px; padding: 5px 7px; display: inline-block; margin-bottom: 10px; }
+  .step b { display: block; font-size: 15px; color: var(--text); margin-bottom: 4px; line-height: 1.3; }
+  .step span { font-size: 13px; color: var(--muted); line-height: 1.4; display: block; }
+  .step .where { margin-top: 8px; font: 600 11px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .component h2 { font-size: 18px; }
+  .component .tech { font: 12.5px/1.4 var(--mono); color: var(--faint); margin-top: 10px; }
+
+  /* ---------- slide 4 ---------- */
+  .arch { display: grid; grid-template-columns: 1.15fr .85fr; gap: 24px; flex: 1; min-height: 0; }
+  .diagram { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+  .diagram svg { width: 100%; height: 100%; display: block; }
+  .tradeoffs { display: grid; gap: 10px; align-content: start; }
+  .tradeoff { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 15px; }
+  .tradeoff h2 { font-size: 15.5px; display: flex; justify-content: space-between; gap: 8px; }
+  .tradeoff h2 em { font: 600 11px/1.6 var(--mono); font-style: normal; color: var(--faint); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+  .tradeoff p { font-size: 13.5px; line-height: 1.45; margin-top: 4px; }
+
+  /* ---------- slide 5 ---------- */
+  .guard h2 .num { font: 800 12px/1 var(--mono); color: var(--bg); padding: 5px 7px; border-radius: 6px; }
+  .guard p { margin-bottom: 8px; }
+  .guard .proof { font: 12.5px/1.5 var(--mono); color: var(--faint); border-top: 1px solid var(--line); padding-top: 9px; margin-top: 4px; }
+  .strip { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .strip .pill { font-size: 12px; padding: 7px 11px; color: var(--muted); }
+
+  /* ---------- slide 6 ---------- */
+  .lifecycle { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  .stage-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 13px 13px 14px; border-top: 3px solid var(--cyan); }
+  .stage-card .n { font: 800 12px/1 var(--mono); color: var(--faint); }
+  .stage-card b { display: block; font-size: 16px; margin: 6px 0 6px; }
+  .stage-card .ai { font: 600 11.5px/1.35 var(--mono); color: var(--cyan); margin-bottom: 6px; }
+  .stage-card span { font-size: 12.8px; line-height: 1.42; color: var(--muted); display: block; }
+  .agents { display: grid; grid-template-columns: 1fr 1fr 1fr 1.15fr; gap: 12px; margin-top: 18px; }
+  .agent { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .agent .file { font: 600 12.5px/1 var(--mono); color: var(--violet); }
+  .agent p { font-size: 13.5px; line-height: 1.45; margin-top: 7px; }
+
+  /* ---------- slide 7 ---------- */
+  .qa { display: grid; grid-template-columns: .9fr 1.1fr; gap: 22px; flex: 1; min-height: 0; align-content: center; }
+  .totals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .total { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .total b { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; display: block; }
+  .total span { font-size: 13px; color: var(--muted); display: block; line-height: 1.35; }
+  .total .stack { font: 11.5px/1.4 var(--mono); color: var(--faint); margin-top: 6px; }
+  .bars { margin-top: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .bars h2 { font-size: 14px; color: var(--muted); font-weight: 600; margin-bottom: 10px; }
+  .bar-row { display: grid; grid-template-columns: 150px 1fr 38px; gap: 10px; align-items: center; font: 12.5px/1 var(--mono); color: var(--muted); margin-bottom: 7px; }
+  .bar-row .track { height: 10px; background: #0b1019; border-radius: 4px; overflow: hidden; }
+  .bar-row .fill { height: 100%; border-radius: 4px; }
+  .bar-row b { color: var(--text); text-align: right; }
+  .qa-cats { display: grid; gap: 10px; align-content: start; }
+  .qa-cat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 15px; border-left: 3px solid var(--line); }
+  .qa-cat h2 { font-size: 15.5px; margin-bottom: 4px; }
+  .qa-cat p { font-size: 13.5px; line-height: 1.45; }
+
+  /* ---------- slide 8 ---------- */
+  .cases { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .case { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 15px 18px; display: grid; gap: 6px; }
+  .case h2 { font-size: 16.5px; display: flex; gap: 10px; align-items: baseline; }
+  .case h2 .ref { font: 600 11.5px/1 var(--mono); color: var(--faint); white-space: nowrap; }
+  .case .row { display: grid; grid-template-columns: 74px 1fr; gap: 8px; font-size: 13.4px; line-height: 1.42; color: var(--muted); }
+  .case .row i { font: 700 11px/1.7 var(--mono); font-style: normal; text-transform: uppercase; letter-spacing: .06em; }
+  .evolve { margin-top: 14px; display: grid; grid-template-columns: 180px 1fr; gap: 14px; align-items: center; background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 13px 18px; }
+  .evolve b { font: 700 12.5px/1.3 var(--mono); color: var(--cyan); text-transform: uppercase; letter-spacing: .08em; }
+  .evolve p { font-size: 14px; line-height: 1.5; }
+
+  /* ---------- controls ---------- */
+  .controls { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; background: rgba(12, 16, 23, .86); border: 1px solid var(--line); border-radius: 999px; padding: 6px; backdrop-filter: blur(8px); z-index: 10; }
+  .controls button { white-space: nowrap; font: 600 13px/1 var(--sans); color: var(--text); background: transparent; border: 1px solid transparent; border-radius: 999px; padding: 9px 14px; cursor: pointer; }
+  .controls button:hover { background: var(--panel-2); }
+  .controls button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+  .controls .count { font: 600 12.5px/1 var(--mono); color: var(--muted); padding: 0 8px; min-width: 56px; text-align: center; }
+  .controls .print { background: var(--cyan); color: #04121a; }
+  .controls .print:hover { background: #67e8f9; }
+  .progress { position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, var(--cyan), var(--violet)); transition: width .3s ease; z-index: 10; }
+  .hint { position: fixed; right: 18px; bottom: 22px; font: 12px/1 var(--mono); color: var(--faint); }
+
+  @media (max-width: 700px) { .hint { display: none; } }
+  @media (max-width: 520px) { .controls .long { display: none; } .controls button { padding: 9px 11px; } }
+
+  /* ---------- print: one 16:9 page per slide ---------- */
+  @page { size: 1280px 720px; margin: 0; }
+  @media print {
+    html, body { height: auto; overflow: visible; background: var(--slide); }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .stage { position: static; display: block; }
+    .deck { transform: none !important; position: static; width: 1280px; height: auto; }
+    .slide { position: relative; opacity: 1; visibility: visible; transform: none; transition: none; border: 0; border-radius: 0; break-after: page; page-break-after: always; }
+    .slide:last-child { break-after: auto; page-break-after: auto; }
+    .controls, .progress, .hint { display: none !important; }
+    .terminal { box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<main class="stage" id="stage">
+<div class="deck" id="deck">
+
+<!-- ======================================================= 1. TITLE -->
+<section class="slide" aria-label="Slide 1: Title">
+  <div class="kicker">FiftyFive Build With AI Hackathon 2026</div>
+  <div class="title-wrap">
+    <div>
+      <div class="brand">Pocket<span>Chaos</span></div>
+      <div class="tagline">Mobile API Chaos Proxy &amp; Negative-Testing Companion</div>
+      <p class="lede">Put a phone on a bad network, a flaky server and a drifting API contract on demand, without touching backend code or installing certificates.</p>
+      <div class="event">
+        <span class="pill"><span class="dot bg-cyan"></span>Express + MongoDB chaos proxy</span>
+        <span class="pill"><span class="dot bg-violet"></span>React control plane</span>
+        <span class="pill"><span class="dot bg-green"></span>Expo React Native companion</span>
+      </div>
+    </div>
+    <div class="terminal" aria-hidden="true">
+      <div class="bar"><i></i><i></i><i></i></div>
+<pre><span class="faint">$</span> <span style="color:var(--text)">GET /proxy/VWB63T/api/v1/user/profile</span>
+<span class="amber">200</span>  <span class="amber">CORRUPTED</span>  264 ms  corrupt_json:3
+<span style="color:var(--text)">POST /proxy/VWB63T/api/v1/orders/checkout</span>
+<span class="red">503</span>  <span class="red">CHAOS 5xx</span>  812 ms  failure:503
+<span style="color:var(--text)">GET /proxy/VWB63T/api/v1/feed/items</span>
+<span class="green">200</span>  <span class="green">OK</span>        2513 ms  delay:2500ms</pre>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat" style="border-color:var(--cyan)"><b>3</b><span>apps in one monorepo, one primary journey</span></div>
+    <div class="stat" style="border-color:var(--green)"><b>707</b><span>automated tests, all passing</span></div>
+    <div class="stat" style="border-color:var(--amber)"><b>0</b><span>hardcoded secrets (env validated with Zod)</span></div>
+    <div class="stat" style="border-color:var(--violet)"><b>5</b><span>AI learning-log entries, observed vs. review</span></div>
+  </div>
+  <div class="footer"><span>Rahul R Mahawar · solo build · October 2026</span><span>01 / 08</span></div>
+</section>
+
+<!-- ======================================================= 2. PROBLEM -->
+<section class="slide" aria-label="Slide 2: The problem">
+  <div class="kicker">02 · The problem</div>
+  <h1>Mobile apps are tested on office Wi-Fi<br><span class="soft">and fail on the real network.</span></h1>
+  <div class="body">
+    <div class="grid g3">
+      <div class="card problem-card">
+        <h2><span class="dot bg-cyan"></span>Flaky 3G latency</h2>
+        <div class="big cyan">+2.5 s</div>
+        <p>Spinners that never stop, double-submitted checkouts, timeouts that are never retried, or retried without an idempotency key.</p>
+      </div>
+      <div class="card problem-card">
+        <h2><span class="dot bg-red"></span>HTTP 5xx drops</h2>
+        <div class="big red">503</div>
+        <p>A request that fails once in five is almost impossible to reproduce on demand, so the error path ships untested.</p>
+      </div>
+      <div class="card problem-card">
+        <h2><span class="dot bg-amber"></span>Corrupted JSON</h2>
+        <div class="big amber">"id": "7"</div>
+        <p>A field turns <code>null</code>, changes type or disappears. The parser throws, or worse, the UI renders garbage with HTTP 200.</p>
+      </div>
+    </div>
+    <div class="today">
+      <div class="label">How teams try<br>to test it today</div>
+      <div class="item"><b>Desktop SSL proxies</b>Install a root certificate on every device, configure Wi-Fi proxies, script rewrite rules by hand.</div>
+      <div class="item"><b>Change the backend</b>Feature flags or "fail sometimes" code in a real service, then remember to take it out again.</div>
+      <div class="item"><b>Mocks in unit tests</b>Fast, but they never cross a real network, so timeouts, retries and offline queues stay untested.</div>
+    </div>
+  </div>
+  <div class="footer"><span>PocketChaos · FiftyFive Build With AI Hackathon 2026</span><span>02 / 08</span></div>
+</section>
+
+<!-- ======================================================= 3. SOLUTION -->
+<section class="slide" aria-label="Slide 3: Solution and primary user journey">
+  <div class="kicker">03 · The solution &amp; primary user journey</div>
+  <h1>One proxy URL, live chaos rules, a phone that tests itself.</h1>
+  <div class="body">
+    <div class="grid g3">
+      <div class="card component">
+        <h2><span class="dot bg-violet"></span>Web control plane</h2>
+        <p>Sign in, define mock or forwarded endpoints, drag live chaos sliders, watch telemetry stream in.</p>
+        <div class="tech">React 19 · Vite · Tailwind · 2 s polling</div>
+      </div>
+      <div class="card component">
+        <h2><span class="dot bg-cyan"></span>Express chaos proxy</h2>
+        <p><code>/proxy/:projectKey/*</code> applies latency, probabilistic faults and JSON corruption, then logs every request.</p>
+        <div class="tech">Express 5 · Mongoose 9 · Zod 4 · JWT</div>
+      </div>
+      <div class="card component">
+        <h2><span class="dot bg-green"></span>React Native companion</h2>
+        <p>Pairs with a 6-character key, runs resilience batches, queues requests offline, inspects every payload.</p>
+        <div class="tech">Expo SDK 58 · RN 0.88 · AsyncStorage</div>
+      </div>
+    </div>
+    <div class="journey">
+      <div class="step"><b>Sign up</b><span>Account gets a unique 6-char project key.</span><div class="where violet">Web</div></div>
+      <div class="step"><b>Define endpoint</b><span>Mock JSON, or forward to an SSRF-vetted upstream.</span><div class="where violet">Web</div></div>
+      <div class="step"><b>Set chaos rules</b><span>Delay 0–10 s, failure %, status 400–599, corrupt JSON.</span><div class="where violet">Web</div></div>
+      <div class="step"><b>Pair the phone</b><span>Type the key; no login or token on the device.</span><div class="where green">Mobile</div></div>
+      <div class="step"><b>Run the batch</b><span>Retries + backoff, schema detector, offline queue &amp; replay.</span><div class="where green">Mobile</div></div>
+      <div class="step"><b>Read the results</b><span>Live telemetry on the web, payload inspector on the phone.</span><div class="where cyan">Both</div></div>
+    </div>
+  </div>
+  <div class="footer"><span>PocketChaos · FiftyFive Build With AI Hackathon 2026</span><span>03 / 08</span></div>
+</section>
+
+<!-- ======================================================= 4. ARCHITECTURE -->
+<section class="slide" aria-label="Slide 4: Architecture and trade-offs">
+  <div class="kicker">04 · System architecture &amp; technical trade-offs</div>
+  <h1 style="font-size:40px">A monorepo of three apps around one contract.</h1>
+  <div class="arch" style="margin-top:20px">
+    <div class="diagram">
+      <svg viewBox="0 0 640 476" role="img" aria-label="Architecture: web dashboard and mobile app talk to the Express API and chaos proxy, which uses MongoDB and forwards to vetted upstream APIs">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#66748a"/></marker>
+        </defs>
+        <style>
+          .box { fill: #0c1017; stroke: #243044; stroke-width: 1.5; }
+          .t { font: 700 15px var(--sans, sans-serif); fill: #e8edf5; }
+          .s { font: 11.5px ui-monospace, Menlo, monospace; fill: #9aa7bb; }
+          .e { font: 600 11px ui-monospace, Menlo, monospace; fill: #66748a; }
+          .ln { stroke: #66748a; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+          .dash { stroke-dasharray: 5 4; }
+        </style>
+        <!-- clients -->
+        <rect class="box" x="16" y="16" width="270" height="92" rx="12" style="stroke:#a78bfa"/>
+        <text class="t" x="34" y="46">/web  dashboard</text>
+        <text class="s" x="34" y="68">React 19 · Vite · Tailwind</text>
+        <text class="s" x="34" y="88">Bearer JWT · polls logs every 2 s</text>
+        <rect class="box" x="354" y="16" width="270" height="92" rx="12" style="stroke:#34d399"/>
+        <text class="t" x="372" y="46">/mobile  companion</text>
+        <text class="s" x="372" y="68">Expo · resilience wrapper</text>
+        <text class="s" x="372" y="88">schema detector · offline queue</text>
+        <!-- backend -->
+        <rect class="box" x="16" y="172" width="608" height="150" rx="12" style="stroke:#22d3ee;fill:#0e141e"/>
+        <rect class="box" x="34" y="192" width="270" height="94" rx="9" style="fill:#121824"/>
+        <text class="t" x="50" y="220" style="font-size:13.5px">/api/*  control plane</text>
+        <text class="s" x="50" y="244">auth · endpoints CRUD (JWT)</text>
+        <text class="s" x="50" y="266">pair · logs (projectKey)</text>
+        <rect class="box" x="336" y="192" width="270" height="94" rx="9" style="fill:#121824"/>
+        <text class="t" x="352" y="220" style="font-size:13.5px">/proxy/:projectKey/*</text>
+        <text class="s" x="352" y="244">delay → fault → mock/forward</text>
+        <text class="s" x="352" y="266">→ corrupt JSON → RequestLog</text>
+        <rect x="190" y="311" width="260" height="22" rx="6" style="fill:#121824"/>
+        <text x="320" y="327" text-anchor="middle" style="font:700 12.5px ui-monospace, Menlo, monospace;fill:#22d3ee">/backend · Express 5 + TypeScript</text>
+        <!-- data -->
+        <rect class="box" x="16" y="384" width="270" height="76" rx="12"/>
+        <text class="t" x="34" y="412">MongoDB</text>
+        <text class="s" x="34" y="434">User · ChaosEndpoint · RequestLog</text>
+        <text class="s" x="34" y="452">logs capped 1000/project, TTL 7 d</text>
+        <rect class="box" x="354" y="384" width="270" height="76" rx="12" style="stroke:#fbbf24"/>
+        <text class="t" x="372" y="412">Upstream APIs</text>
+        <text class="s" x="372" y="434">only via isSafeExternalUrl</text>
+        <text class="s" x="372" y="452">DNS-pinned · no private IPs</text>
+        <!-- arrows -->
+        <path class="ln" d="M110 108 V190"/>
+        <text class="e" x="118" y="150">HTTPS + Bearer JWT</text>
+        <path class="ln" d="M520 108 V190"/>
+        <text class="e" x="528" y="150">proxy calls</text>
+        <path class="ln dash" d="M396 108 L292 190"/>
+        <text class="e" x="354" y="146">pair (key only)</text>
+        <path class="ln" d="M110 322 V382"/>
+        <text class="e" x="118" y="358">Mongoose</text>
+        <path class="ln" d="M520 322 V382"/>
+        <text class="e" x="528" y="358">forward mode</text>
+      </svg>
+    </div>
+    <div class="tradeoffs">
+      <div class="tradeoff"><h2>Zod validates the environment at startup <em>fail fast</em></h2><p><code>JWT_SECRET</code> (≥ 32 chars), <code>MONGODB_URI</code> and <code>CORS_ORIGINS</code> have no defaults. A bad config stops the boot and names the key, never its value.</p></div>
+      <div class="tradeoff"><h2>Short-polling instead of WebSockets <em>simplicity</em></h2><p>2 s polls, paused in hidden tabs, back off on 429. Stateless, works behind any host or proxy; the cost is up to 2 s of staleness.</p></div>
+      <div class="tradeoff"><h2>Deterministic AsyncStorage queue <em>correctness</em></h2><p>One serialized writer, persisted sequence numbers, single-flight sync, at-least-once replay with one <code>Idempotency-Key</code> per request.</p></div>
+      <div class="tradeoff"><h2>Key-only pairing <em>least privilege</em></h2><p>The phone never holds a JWT. The pairing view hides upstream URLs and mock bodies; 32⁶ keys plus a 120/min rate limit.</p></div>
+    </div>
+  </div>
+  <div class="footer"><span>PocketChaos · FiftyFive Build With AI Hackathon 2026</span><span>04 / 08</span></div>
+</section>
+
+<!-- ======================================================= 5. SECURITY -->
+<section class="slide" aria-label="Slide 5: Security and guardrails">
+  <div class="kicker">05 · Security &amp; guardrails <span class="rubric">Engineering &amp; Code Quality · 30%</span></div>
+  <h1>Secure by contract, proven by negative tests.</h1>
+  <div class="body">
+    <div class="grid g2">
+      <div class="card guard">
+        <h2><span class="num bg-green">01</span>Zero hardcoded secrets</h2>
+        <p>Secrets and URLs live only in the environment. <code>env.ts</code> validates them with Zod at startup; only <code>.env.example</code> files are committed.</p>
+        <div class="proof">Canary builds of web + mobile bundles leaked 0 secrets · 11 env-validation tests</div>
+      </div>
+      <div class="card guard">
+        <h2><span class="num bg-violet">02</span>JWT ownership isolation</h2>
+        <p>Every <code>/api/endpoints</code> route needs a Bearer JWT pinned to HS256; every query is scoped to <code>req.user.id</code>.</p>
+        <div class="proof">alg=none · HS512 · expired · wrong-secret → 401 · user B cannot read or toggle user A's endpoints</div>
+      </div>
+      <div class="card guard">
+        <h2><span class="num bg-amber">03</span>Bounded timers &amp; rate limits</h2>
+        <p><code>delayMs</code> is validated to 0–10,000 ms and clamped again at runtime, so even a tampered database row cannot hold a request longer.</p>
+        <div class="proof">delayMs 10000 accepted · 10001 rejected · stored 999999 → sleeps 10000 · proxy 600/min · auth 30/15 min</div>
+      </div>
+      <div class="card guard">
+        <h2><span class="num bg-red">04</span>SSRF protection</h2>
+        <p><code>isSafeExternalUrl</code>: http(s) only; blocks loopback, RFC 1918, link-local <code>169.254.169.254</code>, private IPv6. DNS is pinned at connect time.</p>
+        <div class="proof">65 SSRF unit tests · DNS rebinding → 403 · redirects to metadata never followed · VettedUrl type</div>
+      </div>
+    </div>
+    <div class="strip">
+      <span class="pill">CSP sandbox on every proxy response</span>
+      <span class="pill">helmet · 100 kb body limit</span>
+      <span class="pill">Mongoose sanitizeFilter vs NoSQL injection</span>
+      <span class="pill">bcrypt 12 rounds + timing equaliser</span>
+      <span class="pill">Zod on every body, param and query</span>
+      <span class="pill">Mobile: stored data re-validated</span>
+    </div>
+  </div>
+  <div class="footer"><span>PocketChaos · FiftyFive Build With AI Hackathon 2026</span><span>05 / 08</span></div>
+</section>
+
+<!-- ======================================================= 6. AI LIFECYCLE -->
+<section class="slide" aria-label="Slide 6: AI development lifecycle and context engineering">
+  <div class="kicker">06 · AI development lifecycle &amp; context engineering <span class="rubric">AI Development Practices · 35%</span></div>
+  <h1 style="font-size:40px">Context first, then code: AI worked from written contracts.</h1>
+  <div class="body">
+    <div class="lifecycle">
+      <div class="stage-card"><div class="n">01</div><b>Define</b><div class="ai">POCKETCHAOS_<wbr>MASTER_PLAN.md</div><span>Problem, in/out of scope, data models, API contracts, roadmap.</span></div>
+      <div class="stage-card"><div class="n">02</div><b>Design</b><div class="ai">.ai/CONTEXT.md</div><span>Security rules, response envelope, chaos-engine semantics. Architect role confirms schemas &amp; SSRF plan first.</span></div>
+      <div class="stage-card"><div class="n">03</div><b>Build</b><div class="ai">Claude Code</div><span>Backend → web → mobile, each phase built against the contract and type-checked.</span></div>
+      <div class="stage-card" style="border-top-color:var(--green)"><div class="n">04</div><b>Test</b><div class="ai" style="color:var(--green)">qa-breaker-agent</div><span>Happy path, boundaries, negative cases; every suspected bug gets a failing test first.</span></div>
+      <div class="stage-card" style="border-top-color:var(--amber)"><div class="n">05</div><b>Review</b><div class="ai" style="color:var(--amber)">sec-auditor-agent</div><span>Secrets, SSRF/injection, DoS, maintainability → severity table with exact fixes.</span></div>
+      <div class="stage-card" style="border-top-color:var(--violet)"><div class="n">06</div><b>Document</b><div class="ai" style="color:var(--violet)">AI_LEARNING_LOG.md</div><span>Every AI failure: symptom → cause → fix → guard, labelled observed or review.</span></div>
+    </div>
+    <div class="agents">
+      <div class="agent"><div class="file">architect-agent.md</div><p>Reviews each design against CONTEXT.md before code: exact interfaces &amp; schemas, two trade-offs, three failure modes to prevent.</p></div>
+      <div class="agent"><div class="file">qa-breaker-agent.md</div><p>Four QA pillars incl. <code>delayMs 0/10000</code>, <code>failureRate 0/100</code>, auth and SSRF attacks, plus a bug report before tests.</p></div>
+      <div class="agent"><div class="file">sec-auditor-agent.md</div><p>Audits each diff against CONTEXT.md and the hackathon security rules; outputs Severity · File · Issue · Fix.</p></div>
+      <div class="agent" style="background:var(--panel)"><div class="file" style="color:var(--cyan)">Guidebook p.4 coverage</div><p><strong>Requirements</strong> plan · <strong>Architecture</strong> CONTEXT §2/§5 · <strong>Standards</strong> §4/§6 · <strong>AI context</strong> agents + §3 guardrails · <strong>Delivery</strong> .env.example, dev:memory · <strong>Learning</strong> the log</p></div>
+    </div>
+  </div>
+  <div class="footer"><span>PocketChaos · FiftyFive Build With AI Hackathon 2026</span><span>06 / 08</span></div>
+</section>
+
+<!-- ======================================================= 7. QA -->
+<section class="slide" aria-label="Slide 7: AI-assisted QA and negative testing">
+  <div class="kicker">07 · AI-assisted QA &amp; negative testing</div>
+  <h1 style="font-size:40px">707 automated tests, written to break the code.</h1>
+  <div class="qa" style="margin-top:20px">
+    <div>
+      <div class="totals">
+        <div class="total"><b class="cyan">349</b><span>backend</span><div class="stack">Jest · Supertest · in-memory MongoDB</div></div>
+        <div class="total"><b class="violet">125</b><span>web</span><div class="stack">Vitest · Testing Library</div></div>
+        <div class="total"><b class="green">233</b><span>mobile</span><div class="stack">jest-expo · RN Testing Library</div></div>
+      </div>
+      <div class="bars">
+        <h2>Backend suites (tests)</h2>
+        <div class="bar-row"><span>endpoints (integ.)</span><div class="track"><div class="fill bg-cyan" style="width:100%"></div></div><b>112</b></div>
+        <div class="bar-row"><span>proxy (integ.)</span><div class="track"><div class="fill bg-cyan" style="width:67%"></div></div><b>75</b></div>
+        <div class="bar-row"><span>ssrf (unit)</span><div class="track"><div class="fill bg-red" style="width:58%"></div></div><b>65</b></div>
+        <div class="bar-row"><span>chaos.service</span><div class="track"><div class="fill bg-cyan" style="width:29%"></div></div><b>33</b></div>
+        <div class="bar-row"><span>auth (integ.)</span><div class="track"><div class="fill bg-violet" style="width:20%"></div></div><b>22</b></div>
+        <div class="bar-row"><span>mobile + logs</span><div class="track"><div class="fill bg-green" style="width:16%"></div></div><b>18</b></div>
+        <div class="bar-row" style="margin-bottom:0"><span>upstream + env</span><div class="track"><div class="fill bg-amber" style="width:21%"></div></div><b>24</b></div>
+      </div>
+      <div class="bars" style="display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center">
+        <b class="green" style="font-size:30px;letter-spacing:-0.02em">19/19</b>
+        <p style="font-size:13.5px;line-height:1.45">Mobile QA pass: <strong>64 new tests</strong>; the 19 aimed at suspected bugs all failed first, then <strong>8 bugs + 1 hardening</strong> were fixed.</p>
+      </div>
+    </div>
+    <div class="qa-cats">
+      <div class="qa-cat" style="border-left-color:var(--cyan)"><h2>Boundary edge cases</h2><p><code>delayMs</code> 0 / 10000 / 10001 · <code>failureRate</code> 0 / 100 · status 400–599 · mock JSON depth 20 ✓ / 21 ✗ / 40,000 ✗ · timeout 3999 ms ✓ vs 4000 ms ✗</p></div>
+      <div class="qa-cat" style="border-left-color:var(--red)"><h2>Negative &amp; attack cases</h2><p>SSRF (loopback, RFC 1918, metadata, rebinding) · JWT tampering · cross-user access · NoSQL operators · malformed percent-encoding · 11 invalid project keys · 7 malformed JSON bodies</p></div>
+      <div class="qa-cat" style="border-left-color:var(--amber)"><h2>Chaos &amp; failure edge cases</h2><p>100% corrupted batches · empty-queue replay · same-frame double taps · storage read/write failures · 9,000-level nested JSON · unreachable server</p></div>
+      <div class="qa-cat" style="border-left-color:var(--green)"><h2>How AI output was validated</h2><p>QA passes write the failing test before the fix · deliberately broke code to prove tests bite · "a green run counts only if the test count is right" · live runs on iOS simulator and browser</p></div>
+    </div>
+  </div>
+  <div class="footer"><span>PocketChaos · FiftyFive Build With AI Hackathon 2026</span><span>07 / 08</span></div>
+</section>
+
+<!-- ======================================================= 8. LEARNING -->
+<section class="slide" aria-label="Slide 8: Human validation and learning from AI failures">
+  <div class="kicker">08 · Human validation &amp; learning from AI failures</div>
+  <h1 style="font-size:40px">Where AI was wrong, and what we changed because of it.</h1>
+  <div class="body">
+    <div class="cases">
+      <div class="case">
+        <h2>The SSRF guard blocked the whole internet <span class="ref">log 1.1</span></h2>
+        <div class="row"><i class="red">AI wrote</i><span>One <code>net.BlockList</code> for IPv4 + IPv6; the <code>::ffff:0:0/96</code> rule matched every IPv4 address.</span></div>
+        <div class="row"><i class="green">Human</i><span>Tested the allow-list as hard as the block-list: <code>8.8.8.8</code> must pass. Split per address family.</span></div>
+      </div>
+      <div class="case">
+        <h2>Built against an empty contract <span class="ref">log #3</span></h2>
+        <div class="row"><i class="red">AI wrote</i><span><code>CONTEXT.md</code> was 0 bytes on disk; the model filled the gap with its own defaults → 5 contract divergences.</span></div>
+        <div class="row"><i class="green">Human</i><span>Realigned envelope, validation, fault semantics. New rule: <code>wc -c .ai/*.md</code> pre-flight; empty context = blocker.</span></div>
+      </div>
+      <div class="case">
+        <h2>The offline queue could erase itself <span class="ref">log 5.6</span></h2>
+        <div class="row"><i class="red">AI wrote</i><span>After a failed storage read, the next enqueue built on an empty state and overwrote every saved request.</span></div>
+        <div class="row"><i class="green">Human</i><span>Failing test first; now nothing is written until a read succeeds. Same bug class found in settings (5.11).</span></div>
+      </div>
+      <div class="case">
+        <h2>"INTACT" for corrupted payloads <span class="ref">log 5.13</span></h2>
+        <div class="row"><i class="red">AI wrote</i><span>Majority-vote schema detector; at 100% corruption it called 16.8% of corrupted 4-field bodies INTACT.</span></div>
+        <div class="row"><i class="green">Human</i><span>Measured against the backend's real corruptor over 1,000 batches; undecided fields → UNVERIFIED: 1.5%.</span></div>
+      </div>
+    </div>
+    <div class="evolve">
+      <b>How context evolved</b>
+      <p><code>CONTEXT.md</code> went from <strong>0 bytes</strong> to the engineering contract (commit <code>1aa272e</code>) and the code was realigned to it. The workflow gained <strong>failing test first</strong> and an empty-file pre-flight; the log gained <strong>observed vs. review</strong> labels and one rule: a green run counts only if the test count is right (Jest once passed with 0 tests).</p>
+    </div>
+  </div>
+  <div class="footer"><span>PocketChaos · FiftyFive Build With AI Hackathon 2026</span><span>08 / 08</span></div>
+</section>
+
+</div>
+</main>
+
+<nav class="controls" aria-label="Slide controls">
+  <button type="button" id="prev" aria-label="Previous slide">← Prev</button>
+  <span class="count" id="count" aria-live="polite">1 / 8</span>
+  <button type="button" id="next" aria-label="Next slide">Next →</button>
+  <button type="button" class="print" id="print" aria-label="Print or save as PDF"><span class="long">Print / Save as </span>PDF</button>
+</nav>
+<div class="hint">← → to navigate · F for fullscreen</div>
+
+<script>
+  (function () {
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    var deck = document.getElementById('deck');
+    var count = document.getElementById('count');
+    var progress = document.getElementById('progress');
+    var current = 0;
+
+    function fromHash() {
+      var n = parseInt((location.hash || '').replace('#', ''), 10);
+      return n >= 1 && n <= slides.length ? n - 1 : 0;
+    }
+
+    function show(index) {
+      current = Math.max(0, Math.min(slides.length - 1, index));
+      slides.forEach(function (slide, i) {
+        slide.classList.toggle('active', i === current);
+        slide.classList.toggle('before', i < current);
+        slide.setAttribute('aria-hidden', i === current ? 'false' : 'true');
+      });
+      count.textContent = (current + 1) + ' / ' + slides.length;
+      progress.style.width = ((current + 1) / slides.length * 100) + '%';
+      if (location.hash !== '#' + (current + 1)) history.replaceState(null, '', '#' + (current + 1));
+    }
+
+    function fit() {
+      var scale = Math.min(window.innerWidth / 1300, (window.innerHeight - 70) / 740);
+      deck.style.transform = 'translate(-50%, -50%) scale(' + Math.max(scale, 0.1) + ')';
+    }
+
+    document.addEventListener('keydown', function (event) {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (['ArrowRight', 'PageDown', ' '].indexOf(event.key) !== -1) { event.preventDefault(); show(current + 1); }
+      else if (['ArrowLeft', 'PageUp', 'Backspace'].indexOf(event.key) !== -1) { event.preventDefault(); show(current - 1); }
+      else if (event.key === 'Home') show(0);
+      else if (event.key === 'End') show(slides.length - 1);
+      else if (event.key === 'f' || event.key === 'F') {
+        if (document.fullscreenElement) document.exitFullscreen(); else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+      }
+    });
+    document.getElementById('prev').addEventListener('click', function () { show(current - 1); });
+    document.getElementById('next').addEventListener('click', function () { show(current + 1); });
+    document.getElementById('print').addEventListener('click', function () { window.print(); });
+    var touchX = null;
+    document.addEventListener('touchstart', function (event) { touchX = event.touches[0].clientX; }, { passive: true });
+    document.addEventListener('touchend', function (event) {
+      if (touchX === null) return;
+      var dx = event.changedTouches[0].clientX - touchX;
+      touchX = null;
+      if (Math.abs(dx) > 50) show(current + (dx < 0 ? 1 : -1));
+    });
+    window.addEventListener('resize', fit);
+    window.addEventListener('hashchange', function () { show(fromHash()); });
+
+    fit();
+    show(fromHash());
+  })();
+</script>
+</body>
+</html>

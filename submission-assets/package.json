@@ -1,0 +1,17 @@
+{
+  "name": "pocketchaos-submission-assets",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hackathon submission tooling for PocketChaos: demo seeder, report PDF export, ZIP packager. No dependencies.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "demo:seed": "node demo-seeder.ts",
+    "demo:traffic": "node demo-seeder.ts --traffic",
+    "demo:live": "node demo-seeder.ts --traffic --forever",
+    "export:pdf": "node export-pdf.mjs",
+    "package": "bash package-submission.sh"
+  }
+}
