@@ -70,7 +70,9 @@ export function buildPresets({ port, hostUri, cloudUrl }: PresetInputs): ServerP
 }
 
 /** Sensible first choice: the LAN preset when Expo exposes a real IP, else the platform's loopback alias. */
+/** A configured deployment wins (a fresh install points at the live backend); otherwise the dev machine. */
 export function defaultPresetId(platform: string, presets: ServerPreset[]): PresetId {
+  if (presets.find((preset) => preset.id === 'cloud')?.baseUrl) return 'cloud';
   if (presets.find((preset) => preset.id === 'lan')?.baseUrl) return 'lan';
   return platform === 'android' ? 'android-emulator' : 'localhost';
 }

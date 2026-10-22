@@ -55,7 +55,13 @@ describe('buildPresets', () => {
 });
 
 describe('defaultPresetId', () => {
-  it('prefers the detected LAN host, otherwise the platform loopback alias', () => {
+  it('prefers a configured cloud deployment, even when a LAN host is detected', () => {
+    const cloudUrl = 'https://pocketchaos-backend.onrender.com';
+    expect(defaultPresetId('ios', buildPresets({ port: 4000, hostUri: '192.168.1.20:8081', cloudUrl }))).toBe('cloud');
+    expect(defaultPresetId('android', buildPresets({ port: 4000, cloudUrl }))).toBe('cloud');
+  });
+
+  it('otherwise prefers the detected LAN host, then the platform loopback alias', () => {
     expect(defaultPresetId('ios', buildPresets({ port: 4000, hostUri: '192.168.1.20:8081' }))).toBe('lan');
     expect(defaultPresetId('android', buildPresets({ port: 4000 }))).toBe('android-emulator');
     expect(defaultPresetId('ios', buildPresets({ port: 4000 }))).toBe('localhost');
