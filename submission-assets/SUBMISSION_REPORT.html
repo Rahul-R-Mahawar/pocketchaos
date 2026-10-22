@@ -76,7 +76,7 @@
 <ul><li><strong>In scope:</strong> JWT auth, endpoint CRUD, chaos rule engine, live request logs, the React Native test runner, the offline queue tester and the payload inspector.</li><li><strong>Out of scope (deliberately):</strong> system-level VPN/SSL interception, billing, multi-organisation RBAC, WebSocket streaming.</li></ul>
 <h3 id="1-6-running-the-demo">1.6 Running the demo</h3>
 <table class=""><thead><tr><th>Step</th><th>Command</th></tr></thead><tbody><tr><td>Backend (in-memory MongoDB, no install)</td><td><code>cd backend &amp;&amp; JWT_SECRET=$(openssl rand -hex 32) CORS_ORIGINS=http://localhost:5173 npm run dev:memory</code></td></tr>
-<tr><td>Web dashboard</td><td><code>cd web &amp;&amp; VITE_API_BASE_URL=http://localhost:4000 npm run dev</code> → <a href="http://localhost:5173">http://localhost:5173</a></td></tr>
+<tr><td>Web dashboard</td><td><code>cd web &amp;&amp; npm run dev</code> → <a href="http://localhost:5173">http://localhost:5173</a></td></tr>
 <tr><td>Demo data + live traffic</td><td><code>node submission-assets/demo-seeder.ts --traffic</code></td></tr>
 <tr><td>Mobile app</td><td><code>cd mobile &amp;&amp; npx expo start</code> → Expo Go on a device or simulator</td></tr></tbody></table>
 <p>The demo seeder prints the project key in large type, creates three endpoints, one per chaos behaviour, and can stream simulated mobile traffic so the telemetry panel fills up during a recording.</p>

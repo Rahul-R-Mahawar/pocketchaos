@@ -15,7 +15,7 @@ export function ConfigError({ problems }: { problems: string[] }) {
         </ul>
         <p className="text-sm text-zinc-400">
           Copy <code className="text-zinc-200">web/.env.example</code> to <code className="text-zinc-200">web/.env</code>, set{' '}
-          <code className="text-zinc-200">VITE_API_BASE_URL</code> to the backend origin and restart the dev server.
+          <code className="text-zinc-200">VITE_API_URL</code> to the backend origin and restart the dev server (or rebuild).
         </p>
       </div>
     </main>

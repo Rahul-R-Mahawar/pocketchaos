@@ -21,7 +21,7 @@ JWT_SECRET=$(openssl rand -hex 32) CORS_ORIGINS=http://localhost:5173 npm run de
 
 # 2. Web dashboard → http://localhost:5173
 cd web && npm install
-VITE_API_BASE_URL=http://localhost:4000 npm run dev
+npm run dev
 
 # 3. Demo account, three chaos endpoints and live traffic (prints the project key)
 node submission-assets/demo-seeder.ts --traffic

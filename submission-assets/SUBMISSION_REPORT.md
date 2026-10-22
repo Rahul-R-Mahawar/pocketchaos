@@ -78,7 +78,7 @@ Mobile and front-end engineers (React Native, Flutter, native Android/iOS) and Q
 | Step | Command |
 |---|---|
 | Backend (in-memory MongoDB, no install) | `cd backend && JWT_SECRET=$(openssl rand -hex 32) CORS_ORIGINS=http://localhost:5173 npm run dev:memory` |
-| Web dashboard | `cd web && VITE_API_BASE_URL=http://localhost:4000 npm run dev` → http://localhost:5173 |
+| Web dashboard | `cd web && npm run dev` → http://localhost:5173 |
 | Demo data + live traffic | `node submission-assets/demo-seeder.ts --traffic` |
 | Mobile app | `cd mobile && npx expo start` → Expo Go on a device or simulator |
 

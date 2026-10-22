@@ -25,7 +25,7 @@ cd backend && JWT_SECRET=$(openssl rand -hex 32) CORS_ORIGINS=http://localhost:5
 **Terminal 2: dashboard:**
 
 ```bash
-cd web && VITE_API_BASE_URL=http://localhost:4000 npm run dev
+cd web && npm run dev
 ```
 
 **Terminal 3: demo data.** Run it once now to create the account and endpoints; you will re-run it with traffic during block 2.
