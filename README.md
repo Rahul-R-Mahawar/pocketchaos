@@ -10,6 +10,15 @@ PocketChaos lets mobile developers put their app on a bad network, a flaky serve
 | [`web/`](web) | Dashboard: endpoints, live chaos controls, live telemetry | React 19, Vite, Tailwind CSS |
 | [`mobile/`](mobile) | Companion app: pairing, batch chaos runner, schema-integrity detector, offline queue and replay, payload inspector | Expo SDK 58, React Native, TypeScript |
 
+## Live demo
+
+| | URL |
+|---|---|
+| Dashboard | https://pocketchaos.onrender.com |
+| API / chaos proxy | https://pocketchaos-backend.onrender.com (health: [`/health`](https://pocketchaos-backend.onrender.com/health)) |
+
+Register an account on the dashboard, or ask for the demo account details through the submission process; no credentials are kept in this repository. The deployment is defined in [`render.yaml`](render.yaml): a Node web service plus a static site, with MongoDB Atlas behind it.
+
 ## Quick start
 
 Requires Node 20.19+ (Node 22.18+ for the demo seeder). No MongoDB install is needed for local runs.
@@ -85,7 +94,7 @@ This project was built with Claude Code against written context:
 
 ## Status and limitations
 
-- **Deployment:** runs locally end to end; it is not deployed yet.
+- **Deployment:** live on Render's free tier (see [Live demo](#live-demo)); a sleeping service takes about 50 s to wake on the first request.
 - **Telemetry:** uses 2-second polling, not WebSockets.
 - **Dashboard login:** the JWT is kept in `localStorage`.
 - **Network config:** cleartext HTTP is enabled for LAN development only.

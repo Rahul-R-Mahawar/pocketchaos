@@ -84,7 +84,7 @@ Mobile and front-end engineers (React Native, Flutter, native Android/iOS) and Q
 
 The demo seeder prints the project key in large type, creates three endpoints, one per chaos behaviour, and can stream simulated mobile traffic so the telemetry panel fills up during a recording.
 
-**Deployment status:** the product runs end to end locally. The backend is deployment-ready in configuration terms: its environment is validated at startup, `TRUST_PROXY` handles reverse proxies, and CORS uses an explicit allow-list. If a hosted instance is provided, its access details are shared through the submission process, never in the repository.
+**Deployment status:** live on Render, defined in `render.yaml`. The dashboard is a static site at https://pocketchaos.onrender.com, and the API and chaos proxy are a Node web service at https://pocketchaos-backend.onrender.com, backed by MongoDB Atlas. Secrets (`JWT_SECRET`, `MONGODB_URI`) exist only in Render's environment settings, `TRUST_PROXY=1` gives the rate limits real client IPs, and CORS allows only the dashboard origin. Verified end to end against the live services: CORS preflight, SPA deep links, registration, endpoint creation, 12 proxied requests (OK, corrupted and injected 503) and live telemetry. On the free tier a sleeping service takes about 50 s to wake. Demo account details are shared through the submission process, never in the repository.
 
 ---
 
