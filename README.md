@@ -16,7 +16,7 @@ PocketChaos lets mobile developers put their app on a bad network, a flaky serve
 |---|---|
 | Dashboard | https://pocketchaos.onrender.com |
 | API / chaos proxy | https://pocketchaos-backend.onrender.com (health: [`/health`](https://pocketchaos-backend.onrender.com/health)) |
-| Mobile app (web preview) | Coming soon on Render: the Expo app built for the browser, so you can try pairing, the Chaos Runner and the offline queue without installing anything |
+| Mobile app (web preview) | https://pocketchaos-mobile-web.onrender.com: the Expo app built for the browser. Try pairing, the Chaos Runner and the offline queue without installing anything |
 
 Register an account on the dashboard, or ask for the demo account details through the submission process; no credentials are kept in this repository. The deployment is defined in [`render.yaml`](render.yaml): a Node web service, the dashboard and a browser build of the mobile app as static sites, with MongoDB Atlas behind it.
 
