@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { API_BASE_URL, makeEndpoint } from '../test/fixtures';
 import { fail, fakeAdapter, ok, type FakeReply } from '../test/fakeAdapter';
-import { createApiClient } from './client';
+import { COLD_START_TIMEOUT_MS, createApiClient, REQUEST_TIMEOUT_MS, WAKING_NOTICE_AFTER_MS } from './client';
 import { ApiError } from './errors';
 
 function setup(handler: Parameters<typeof fakeAdapter>[0], token: string | null = 'jwt-token') {
@@ -114,5 +114,60 @@ describe('createApiClient', () => {
     const { api, requests } = setup(() => ok({ projectKey: 'K7Q2XM', logs: [] }));
     await api.getLogs('../admin');
     expect(requests[0]?.url).toBe('/api/logs/..%2Fadmin');
+  });
+});
+
+describe('cold starts (a sleeping free-tier backend)', () => {
+  function slowSetup(delayMs: number) {
+    const onServerWaking = vi.fn();
+    const timeouts: (number | undefined)[] = [];
+    const adapter: import('axios').AxiosAdapter = (config) =>
+      new Promise((resolve) => {
+        timeouts.push(config.timeout);
+        setTimeout(
+          () => resolve({ data: { success: true, data: [] }, status: 200, statusText: 'OK', headers: {}, config, request: {} }),
+          delayMs,
+        );
+      });
+    const api = createApiClient({ baseURL: API_BASE_URL, getToken: () => 't', onSessionExpired: vi.fn(), onServerWaking, adapter });
+    return { api, onServerWaking, timeouts };
+  }
+
+  it('gives the first requests a long timeout, then the normal one once the server has answered', async () => {
+    const { api, timeouts } = slowSetup(0);
+    await api.listEndpoints();
+    await api.listEndpoints();
+    expect(timeouts).toEqual([COLD_START_TIMEOUT_MS, REQUEST_TIMEOUT_MS]);
+  });
+
+  it('reports "waking" only when a cold request takes more than a few seconds, and clears it on the answer', async () => {
+    vi.useFakeTimers();
+    try {
+      const { api, onServerWaking } = slowSetup(20_000);
+      const pending = api.listEndpoints();
+      await vi.advanceTimersByTimeAsync(WAKING_NOTICE_AFTER_MS - 1);
+      expect(onServerWaking).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(onServerWaking).toHaveBeenLastCalledWith(true);
+      await vi.advanceTimersByTimeAsync(20_000);
+      await pending;
+      expect(onServerWaking).toHaveBeenLastCalledWith(false);
+      expect(onServerWaking).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('never reports "waking" for a fast first answer', async () => {
+    vi.useFakeTimers();
+    try {
+      const { api, onServerWaking } = slowSetup(200);
+      const pending = api.listEndpoints();
+      await vi.advanceTimersByTimeAsync(10_000);
+      await pending;
+      expect(onServerWaking).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

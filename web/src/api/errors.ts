@@ -53,7 +53,7 @@ export function toApiError(error: unknown, apiBaseUrl?: string): ApiError {
       return new ApiError(error.response.status, 'UNEXPECTED_RESPONSE', `Unexpected ${error.response.status} response`);
     }
     if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
-      return new ApiError(null, 'TIMEOUT', 'The API took too long to respond');
+      return new ApiError(null, 'TIMEOUT', 'The API took too long to respond. If it was asleep, it may still be starting up: try again in a moment.');
     }
     return new ApiError(
       null,
