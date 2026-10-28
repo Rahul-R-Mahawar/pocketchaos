@@ -90,7 +90,7 @@ I'm Rahul, and this is PocketChaos: a mobile API chaos proxy and negative-testin
 ```text
 The backend is running, and I've just started our demo seeder. It signs in a demo account, prints the six-character project key big enough to read on video, and creates three endpoints: a user profile with JSON corruption, a checkout that fails forty percent of the time with a 503, and a home feed with two and a half seconds of latency.
 
-On the dashboard, each endpoint has live chaos controls: latency, failure rate, fault status code and corrupt JSON. Changes save instantly. On the right is live telemetry: every request through the proxy appears within two seconds. Green is success, amber means the payload was corrupted, red is an injected fault.
+On the live dashboard, each endpoint has chaos controls: latency, failure rate, fault status code and corrupt JSON, and changes save instantly. On the right is live telemetry: every request through the proxy appears within two seconds. Green is success, amber means the payload was corrupted, red is an injected fault. One click on Clear hides the older requests, so you watch only the new ones arrive.
 
 Now the phone. I type the project key on the Pair tab, and the app pulls the endpoints and their chaos rules. No password or token ever reaches the device. On the Runner tab I fire a batch with exponential backoff retries. The summary shows success rate, latency, faults, and corrupted payloads caught by our schema integrity detector. One tap opens the payload inspector: the fields that were removed or changed, the request headers with its idempotency key, and the raw body.
 
@@ -169,11 +169,11 @@ That log changed how I work. Once, the contract file was empty on disk, and the 
 ### Narration
 
 ```text
-The result is seven hundred and seven automated tests across the three apps: boundaries like zero and ten-thousand-millisecond delays, attacks like DNS rebinding and token tampering, and chaos cases like fully corrupted batches and double taps on the sync button. In the QA passes, every bug was proven with a failing test before it was fixed.
+The result is over seven hundred automated tests across the three apps: boundaries like zero and ten-thousand-millisecond delays, attacks like DNS rebinding and token tampering, and chaos cases like fully corrupted batches and double taps on the sync button. In the QA passes, every bug was proven with a failing test before it was fixed.
 
 Two examples: the AI's first SSRF guard blocked the entire internet, and its offline queue could erase saved requests after a storage error. Both were caught, fixed and locked in with tests.
 
-PocketChaos: chaos on demand, so your users never meet it first. Thanks for watching.
+PocketChaos is live: try the dashboard, the mobile app in your browser, or the Android app from the links on screen. Chaos on demand, so your users never meet it first. Thanks for watching.
 ```
 
 ### Screen choreography
