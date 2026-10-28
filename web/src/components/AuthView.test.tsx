@@ -48,6 +48,26 @@ describe('AuthView', () => {
     expect(api.register).not.toHaveBeenCalled();
   });
 
+  it('clears a field error as soon as the input becomes valid, without another submit', async () => {
+    renderAuth();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('tab', { name: 'Register' }));
+    await user.type(screen.getByLabelText('Email'), 'ada@example');
+    await user.type(screen.getByLabelText('Password'), 'short');
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+    expect(screen.getByText('Use at least 8 characters')).toBeInTheDocument();
+    expect(screen.getByText('Enter a valid email address')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Password'), '12');
+    expect(screen.getByText('Use at least 8 characters')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Password'), '3');
+    expect(screen.queryByText('Use at least 8 characters')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Password')).toHaveAttribute('aria-invalid', 'false');
+
+    await user.type(screen.getByLabelText('Email'), '.com');
+    expect(screen.queryByText('Enter a valid email address')).not.toBeInTheDocument();
+  });
+
   it('logs in with a trimmed email and stores the session', async () => {
     const api = makeFakeApi({ login: vi.fn().mockResolvedValue(PAYLOAD) });
     const { auth } = renderAuth(api);

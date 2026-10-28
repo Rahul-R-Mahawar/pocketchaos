@@ -30,6 +30,19 @@ export function AuthView() {
   const [submitting, setSubmitting] = useState(false);
   const ids = { email: useId(), password: useId() };
 
+  // Once a field shows an error, re-check it on every keystroke so the message clears as soon as it's fixed.
+  // A field without an error stays quiet until the next submit, so nothing nags while the user is still typing.
+  const recheck = (field: Field, nextEmail: string, nextPassword: string) => {
+    if (!fieldErrors[field]) return;
+    const message = validate(mode, nextEmail, nextPassword)[field];
+    setFieldErrors((current) => {
+      const next = { ...current };
+      if (message) next[field] = message;
+      else delete next[field];
+      return next;
+    });
+  };
+
   const switchMode = (next: Mode) => {
     setMode(next);
     setFieldErrors({});
@@ -103,7 +116,10 @@ export function AuthView() {
                 type="email"
                 autoComplete="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  recheck('email', event.target.value, password);
+                }}
                 aria-invalid={Boolean(fieldErrors.email)}
                 aria-describedby={fieldErrors.email ? `${ids.email}-error` : undefined}
                 className={inputClass(Boolean(fieldErrors.email))}
@@ -125,7 +141,10 @@ export function AuthView() {
                 type="password"
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  recheck('password', email, event.target.value);
+                }}
                 aria-invalid={Boolean(fieldErrors.password)}
                 aria-describedby={fieldErrors.password ? `${ids.password}-error` : undefined}
                 className={inputClass(Boolean(fieldErrors.password))}
