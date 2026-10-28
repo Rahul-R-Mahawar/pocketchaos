@@ -1,4 +1,4 @@
-import { Activity, CircleQuestionMark, Globe, Pause, Play, Smartphone, TabletSmartphone, WifiOff } from 'lucide-react';
+import { Activity, CircleQuestionMark, Eraser, Globe, Pause, Play, Smartphone, TabletSmartphone, WifiOff } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import type { ApiError } from '../api/errors';
 import type { ClientPlatform, RequestLogDto } from '../api/types';
@@ -87,19 +87,29 @@ export function RequestLogPanel({ projectKey }: { projectKey: string }) {
     enabled: !paused,
     onError: handleError,
   });
-  const logs = data?.logs ?? [];
+  const allLogs = data?.logs ?? [];
+  // "Clear" hides what is already on screen and keeps showing new requests. It only filters the view: the
+  // server keeps its logs. The cutoff is the newest log's own server timestamp, so browser clock skew can't
+  // hide new requests or bring old ones back.
+  const [clearedAfter, setClearedAfter] = useState<number | null>(null);
+  const logs = clearedAfter === null ? allLogs : allLogs.filter((log) => Date.parse(log.timestamp) > clearedAfter);
+  const hiddenCount = allLogs.length - logs.length;
+  const clear = () => {
+    const newest = Math.max(...allLogs.map((log) => Date.parse(log.timestamp)));
+    if (Number.isFinite(newest)) setClearedAfter(newest);
+  };
 
   return (
     <section aria-labelledby="telemetry-title" className={`${panel} flex h-full min-h-96 flex-col overflow-hidden`}>
       <header className="flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-3">
         <div className="flex items-center gap-2">
           <Activity aria-hidden className="size-4 text-emerald-400" />
-          <h2 id="telemetry-title" className="text-sm font-semibold uppercase tracking-wider text-zinc-300">
+          <h2 id="telemetry-title" className="whitespace-nowrap text-sm font-semibold uppercase tracking-wider text-zinc-300">
             Live telemetry
           </h2>
         </div>
         <div className="flex items-center gap-3">
-          <span aria-live="polite" className="flex items-center gap-1.5 text-xs text-zinc-500">
+          <span aria-live="polite" className="flex items-center gap-1.5 whitespace-nowrap text-xs text-zinc-500">
             {paused ? (
               'Paused'
             ) : error ? (
@@ -117,6 +127,25 @@ export function RequestLogPanel({ projectKey }: { projectKey: string }) {
               </>
             )}
           </span>
+          {clearedAfter !== null && hiddenCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => setClearedAfter(null)}
+              className="whitespace-nowrap rounded-md px-2 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
+            >
+              Show all ({hiddenCount})
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={clear}
+            disabled={logs.length === 0}
+            aria-label="Clear requests shown"
+            title="Clear: hide these requests and show only new ones"
+            className="rounded-md p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+          >
+            <Eraser aria-hidden className="size-4" />
+          </button>
           <button
             type="button"
             onClick={() => setPaused((value) => !value)}
@@ -139,7 +168,9 @@ export function RequestLogPanel({ projectKey }: { projectKey: string }) {
         <div className="grid flex-1 place-items-center p-8 text-center">
           <div>
             <Activity aria-hidden className="mx-auto mb-3 size-8 text-zinc-700" />
-            <p className="text-sm text-zinc-400">{data ? 'No requests yet' : 'Loading telemetry…'}</p>
+            <p className="text-sm text-zinc-400">
+              {!data ? 'Loading telemetry…' : clearedAfter !== null ? 'Cleared. Waiting for new requests' : 'No requests yet'}
+            </p>
             <p className="mt-1 text-xs text-zinc-600">Press “Test in Browser” on an endpoint or pair the mobile app.</p>
           </div>
         </div>
@@ -152,7 +183,10 @@ export function RequestLogPanel({ projectKey }: { projectKey: string }) {
       )}
 
       <footer className="border-t border-zinc-800 px-4 py-2 text-[11px] text-zinc-600">
-        Latest {logs.length} of up to 50 requests · refreshes every {LOG_POLL_INTERVAL_MS / 1000}s
+        {clearedAfter !== null
+          ? `${logs.length} new since you cleared${hiddenCount > 0 ? ` · ${hiddenCount} older hidden` : ''}`
+          : `Latest ${logs.length} of up to 50 requests`}{' '}
+        · refreshes every {LOG_POLL_INTERVAL_MS / 1000}s
       </footer>
     </section>
   );

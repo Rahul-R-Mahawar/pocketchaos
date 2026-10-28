@@ -180,6 +180,39 @@ describe('RequestLogPanel', () => {
     expect(getLogs).toHaveBeenCalledTimes(1);
   });
 
+  it('Clear hides the requests already shown and keeps showing new ones; Show all brings them back', async () => {
+    const older = [
+      makeLog({ id: 'a', path: '/old-1', timestamp: '2026-10-28T10:00:01.000Z' }),
+      makeLog({ id: 'b', path: '/old-2', timestamp: '2026-10-28T10:00:00.000Z' }),
+    ];
+    const newer = makeLog({ id: 'c', path: '/new', timestamp: '2026-10-28T10:00:05.000Z' });
+    const getLogs = vi.fn().mockResolvedValue(response(older));
+    renderPanel(getLogs);
+    await flush();
+    expect(screen.getByText('/old-1')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear requests shown' }));
+    expect(screen.queryByText('/old-1')).not.toBeInTheDocument();
+    expect(screen.getByText('Cleared. Waiting for new requests')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Clear requests shown' })).toBeDisabled();
+
+    getLogs.mockResolvedValue(response([newer, ...older]));
+    await advance(LOG_POLL_INTERVAL_MS);
+    expect(screen.getByText('/new')).toBeInTheDocument();
+    expect(screen.queryByText('/old-2')).not.toBeInTheDocument();
+    expect(screen.getByText(/1 new since you cleared · 2 older hidden/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show all (2)' }));
+    expect(screen.getByText('/old-1')).toBeInTheDocument();
+    expect(screen.getByText('/new')).toBeInTheDocument();
+  });
+
+  it('cannot clear an empty list', async () => {
+    renderPanel();
+    await flush();
+    expect(screen.getByRole('button', { name: 'Clear requests shown' })).toBeDisabled();
+  });
+
   it('shows an empty state before any traffic', async () => {
     renderPanel();
     await flush();
