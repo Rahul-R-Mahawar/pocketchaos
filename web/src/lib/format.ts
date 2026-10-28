@@ -2,9 +2,12 @@ export function formatMs(ms: number): string {
   return `${Math.round(ms).toLocaleString('en-US')} ms`;
 }
 
-export function formatClock(iso: string): string {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleTimeString('en-GB', { hour12: false });
+/** Local time on a 12-hour clock, e.g. "2:03:25 PM". */
+export function formatClock(time: string | number): string {
+  const date = new Date(time);
+  return Number.isNaN(date.getTime())
+    ? '—'
+    : date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
 }
 
 /** Full proxy URL for an endpoint: the configured API origin plus the server-provided proxyPath. */

@@ -123,7 +123,7 @@ export function RequestLogPanel({ projectKey }: { projectKey: string }) {
                   <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60" />
                   <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
                 </span>
-                Live{lastUpdatedAt ? ` · ${new Date(lastUpdatedAt).toLocaleTimeString('en-GB', { hour12: false })}` : ''}
+                Live{lastUpdatedAt ? ` · ${formatClock(lastUpdatedAt)}` : ''}
               </>
             )}
           </span>
