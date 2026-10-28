@@ -101,7 +101,7 @@ export function RequestLogPanel({ projectKey }: { projectKey: string }) {
 
   return (
     <section aria-labelledby="telemetry-title" className={`${panel} flex h-full min-h-96 flex-col overflow-hidden`}>
-      <header className="flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-3">
+      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-zinc-800 px-4 py-3">
         <div className="flex items-center gap-2">
           <Activity aria-hidden className="size-4 text-emerald-400" />
           <h2 id="telemetry-title" className="whitespace-nowrap text-sm font-semibold uppercase tracking-wider text-zinc-300">
@@ -127,15 +127,6 @@ export function RequestLogPanel({ projectKey }: { projectKey: string }) {
               </>
             )}
           </span>
-          {clearedAfter !== null && hiddenCount > 0 ? (
-            <button
-              type="button"
-              onClick={() => setClearedAfter(null)}
-              className="whitespace-nowrap rounded-md px-2 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
-            >
-              Show all ({hiddenCount})
-            </button>
-          ) : null}
           <button
             type="button"
             onClick={clear}
@@ -182,11 +173,22 @@ export function RequestLogPanel({ projectKey }: { projectKey: string }) {
         </ol>
       )}
 
-      <footer className="border-t border-zinc-800 px-4 py-2 text-[11px] text-zinc-600">
-        {clearedAfter !== null
-          ? `${logs.length} new since you cleared${hiddenCount > 0 ? ` · ${hiddenCount} older hidden` : ''}`
-          : `Latest ${logs.length} of up to 50 requests`}{' '}
-        · refreshes every {LOG_POLL_INTERVAL_MS / 1000}s
+      <footer className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-zinc-800 px-4 py-2 text-[11px] text-zinc-600">
+        <span>
+          {clearedAfter !== null
+            ? `${logs.length} new since you cleared${hiddenCount > 0 ? ` · ${hiddenCount} older hidden` : ''}`
+            : `Latest ${logs.length} of up to 50 requests`}{' '}
+          · refreshes every {LOG_POLL_INTERVAL_MS / 1000}s
+        </span>
+        {clearedAfter !== null && hiddenCount > 0 ? (
+          <button
+            type="button"
+            onClick={() => setClearedAfter(null)}
+            className="whitespace-nowrap rounded px-1.5 py-0.5 font-medium text-emerald-400 transition-colors hover:bg-zinc-800 hover:text-emerald-300"
+          >
+            Show all ({hiddenCount})
+          </button>
+        ) : null}
       </footer>
     </section>
   );
